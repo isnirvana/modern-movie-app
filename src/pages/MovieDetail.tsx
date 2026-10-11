@@ -311,7 +311,7 @@ export default function MovieDetail() {
                 <div className="h-[2px]" style={{ background: "linear-gradient(90deg,#6c63ff,#f72585,transparent)" }} />
                 <div className="relative w-full aspect-video bg-black">
                   <iframe
-                    src={imdbId ? `https://vidfast.vc/movie/${imdbId}` : ""}
+                    src={imdbId ? `https://share.cdnm.ink/embed/imdb/${imdbId}` : ""}
                     allowFullScreen
                     allow="autoplay; fullscreen"
                     className="absolute inset-0 w-full h-full"
