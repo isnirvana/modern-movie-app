@@ -2,11 +2,11 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Link } from "react-router-dom"
+import { ChevronRight } from "lucide-react"
 import MovieCard from "./MovieCard"
 
 interface ContentShelfProps {
   title: string
-  /** flat list of already-fetched items (for infinite mode or static mode) */
   items: Array<{
     id: number
     media_type?: "movie" | "tv"
@@ -17,6 +17,18 @@ interface ContentShelfProps {
   isFetchingNextPage?: boolean
   initialCount?: number
   increment?: number
+}
+
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.045 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
 }
 
 export default function ContentShelf({
@@ -30,9 +42,6 @@ export default function ContentShelf({
 }: ContentShelfProps) {
   const [visible, setVisible] = useState(initialCount)
 
-  // Debug: ensure media_type is present
-  console.log("First shelf item:", items[0])
-
   const handleLoadMoreStatic = () => {
     setVisible((v) => Math.min(v + increment, items.length))
   }
@@ -40,48 +49,69 @@ export default function ContentShelf({
   const displayItems = items.slice(0, fetchNextPage ? items.length : visible)
 
   return (
-    <section className="mb-8">
-      <h2 className="text-2xl font-semibold text-white mb-4">{title}</h2>
+    <section className="px-6 md:px-12 py-10">
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <span className="w-1 h-6 rounded-full bg-gradient-to-b from-primary to-accent" />
+          <h2 className="section-heading">{title}</h2>
+        </div>
+        {(hasNextPage || visible < items.length) && (
+          <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-primary transition-colors font-medium">
+            View all <ChevronRight size={14} />
+          </button>
+        )}
+      </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 overflow-hidden">
+      {/* Grid */}
+      <motion.div
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.05 }}
+      >
         {displayItems.map((item) => (
           <motion.div
             key={item.id}
-            whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.2 }}
+            variants={itemVariants}
+            initial={false}
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.1 }}
           >
             <Link
-              to={
-                item.media_type === "tv"
-                  ? `/tv/${item.id}`
-                  : `/movie/${item.id}`
-              }
+              to={item.media_type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`}
             >
               <MovieCard movie={item} />
             </Link>
           </motion.div>
         ))}
-      </div>
+      </motion.div>
 
-      {fetchNextPage && hasNextPage !== undefined ? (
+      {/* Load More */}
+      {fetchNextPage ? (
         hasNextPage ? (
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-10">
             <button
-              onClick={fetchNextPage}
+              onClick={() => fetchNextPage()}
               disabled={isFetchingNextPage}
-              className="px-6 py-2 bg-primary text-white rounded hover:bg-primary/80 transition"
+              className="btn-primary disabled:opacity-50"
             >
-              {isFetchingNextPage ? "Loading..." : "Load More"}
+              {isFetchingNextPage ? (
+                <>
+                  <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  Loading…
+                </>
+              ) : (
+                "Load More"
+              )}
             </button>
           </div>
         ) : null
       ) : (
         visible < items.length && (
-          <div className="flex justify-center mt-6">
-            <button
-              onClick={handleLoadMoreStatic}
-              className="px-6 py-2 bg-primary text-white rounded hover:bg-primary/80 transition"
-            >
+          <div className="flex justify-center mt-10">
+            <button onClick={handleLoadMoreStatic} className="btn-primary">
               Load More
             </button>
           </div>

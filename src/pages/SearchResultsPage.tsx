@@ -4,24 +4,27 @@ import { useSearchParams, Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import MovieCard from "../components/MovieCard"
+import { motion } from "framer-motion"
+import { Search, Loader2, Film, Tv, LayoutGrid } from "lucide-react"
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_BASE = "https://api.themoviedb.org/3"
 
+const tabs = [
+  { key: "all", label: "All", icon: <LayoutGrid size={14} /> },
+  { key: "movie", label: "Movies", icon: <Film size={14} /> },
+  { key: "tv", label: "TV Shows", icon: <Tv size={14} /> },
+] as const
+
 export default function SearchResultsPage() {
-  // 1) Read the ?query=… param
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get("query") || ""
-
-  // 2) Filter tab state: "all" | "movie" | "tv"
   const [filter, setFilter] = useState<"all" | "movie" | "tv">("all")
 
   useEffect(() => {
-    // reset filter when query changes
     setFilter("all")
   }, [query])
 
-  // 3) Fetch results with React Query v5 object syntax
   const {
     data: results = [],
     isLoading,
@@ -42,85 +45,103 @@ export default function SearchResultsPage() {
     staleTime: 1000 * 60,
   })
 
-  // 4) Derive filtered list
   const filtered =
     filter === "all"
       ? results
       : results.filter((r: any) => r.media_type === filter)
 
   return (
-    <div className="p-4 max-w-6xl mx-auto text-white">
-      {/* Search input & button */}
-      <div className="mb-6 flex">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setSearchParams({ query: e.target.value })}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") setSearchParams({ query })
-          }}
-          placeholder="Search movies or TV shows..."
-          className="flex-1 p-2 bg-surface rounded-l text-white placeholder-gray-400 focus:outline-none"
-        />
-        <button
-          onClick={() => setSearchParams({ query })}
-          className="px-4 bg-primary rounded-r hover:bg-primary/80 transition"
-        >
-          Search
-        </button>
+    <div className="min-h-screen px-6 md:px-12 pt-24 pb-16 text-white">
+      {/* Search Bar */}
+      <div className="max-w-2xl mx-auto mb-10">
+        <div className="flex items-center glass rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-primary/50 transition-shadow">
+          <Search size={18} className="text-gray-400 shrink-0 mr-3" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setSearchParams({ query: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") setSearchParams({ query })
+            }}
+            placeholder="Search movies or TV shows…"
+            className="flex-1 bg-transparent text-white placeholder-gray-500 focus:outline-none text-sm"
+          />
+        </div>
       </div>
 
-      {/* Header */}
+      {/* Heading */}
       {query && (
-        <h1 className="text-2xl font-semibold mb-4">
-          Results for “<span className="text-primary">{query}</span>”
-        </h1>
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-2xl font-bold mb-6"
+          style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+        >
+          Results for{" "}
+          <span className="text-gradient">"{query}"</span>
+          {!isLoading && (
+            <span className="text-sm font-normal text-gray-500 ml-3">
+              {filtered.length} found
+            </span>
+          )}
+        </motion.h1>
       )}
 
       {/* Filter Tabs */}
-      <div className="flex space-x-4 mb-6">
-        {(["all", "movie", "tv"] as const).map((f) => (
+      <div className="flex items-center gap-2 mb-8">
+        {tabs.map((t) => (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`
-              px-3 py-1 rounded
-              ${
-                filter === f
-                  ? "bg-primary text-black"
-                  : "bg-surface text-gray-400 hover:bg-surface/80"
-              }
-            `}
+            key={t.key}
+            onClick={() => setFilter(t.key)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+              filter === t.key
+                ? "bg-primary text-white shadow-glow"
+                : "glass text-gray-400 hover:text-white"
+            }`}
           >
-            {f === "all" ? "All" : f === "movie" ? "Movies" : "TV Shows"}
+            {t.icon}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* Loading / Error */}
-      {isLoading && <p>Loading results…</p>}
+      {/* States */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-24 gap-3 text-gray-400">
+          <Loader2 size={20} className="animate-spin" /> Loading results…
+        </div>
+      )}
       {error && (
-        <p className="text-red-400">Error loading results. Please try again.</p>
+        <p className="text-center py-12 text-red-400">
+          Error loading results. Please try again.
+        </p>
       )}
-
-      {/* No results */}
       {!isLoading && !error && filtered.length === 0 && (
-        <p>No {filter === "all" ? "" : filter} results found.</p>
+        <div className="text-center py-24 text-gray-500">
+          <p className="text-5xl mb-4">🎬</p>
+          <p className="text-lg font-medium text-gray-400">No results found</p>
+          <p className="text-sm mt-1">Try a different search term or filter.</p>
+        </div>
       )}
 
-      {/* Results Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {filtered.map((item: any) => (
-          <Link
+      {/* Grid */}
+      <motion.div
+        layout
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+      >
+        {filtered.map((item: any, i: number) => (
+          <motion.div
             key={`${item.media_type}-${item.id}`}
-            to={
-              item.media_type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`
-            }
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03, duration: 0.35 }}
           >
-            <MovieCard movie={item} />
-          </Link>
+            <Link to={item.media_type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`}>
+              <MovieCard movie={item} />
+            </Link>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   )
 }

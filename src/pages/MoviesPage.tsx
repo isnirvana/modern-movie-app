@@ -12,15 +12,12 @@ export default function MoviesPage() {
   if (isLoading) return <LoadingSkeleton />
 
   return (
-    <>
-      <h1 className="text-3xl text-white mb-6">All Movies</h1>
-      <ContentShelf
-        title="All Movies"
-        items={movies}
-        fetchNextPage={fetchNextPage}
-        hasNextPage={hasNextPage}
-        isFetchingNextPage={isFetchingNextPage}
-      />
-    </>
+    <ContentShelf
+      title="Movies & Shows"
+      items={movies}
+      fetchNextPage={fetchNextPage}
+      hasNextPage={hasNextPage}
+      isFetchingNextPage={isFetchingNextPage}
+    />
   )
 }

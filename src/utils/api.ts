@@ -39,5 +39,5 @@ export const fetchMovieDetails = (id: number) =>
 
 export const fetchTVDetails = (id: number) =>
   api
-    .get(`/tv/${id}`, { params: { append_to_response: "credits" } })
+    .get(`/tv/${id}`, { params: { append_to_response: "credits,external_ids" } })
     .then((res) => res.data)

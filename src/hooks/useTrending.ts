@@ -26,6 +26,7 @@ export const useTrending = () =>
   useInfiniteQuery({
     queryKey: ["trending"],
     queryFn: fetchTrending,
-    getNextPageParam: (lastPage) =>
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: any) =>
       lastPage.page < lastPage.total_pages ? lastPage.page + 1 : undefined,
   })

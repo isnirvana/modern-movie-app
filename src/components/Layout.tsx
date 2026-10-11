@@ -1,38 +1,4 @@
-// import { ReactNode, useState, useEffect } from 'react';
-// import NavBar from './NavBar';
-// import SideDrawer from './SideDrawer';
-// import { AnimatePresence, motion } from 'framer-motion';
-
-// export default function Layout({ children }: { children: ReactNode }) {
-//   // control side-drawer open state
-//   const [drawerOpen, setDrawerOpen] = useState(false);
-
-//   // listen for hamburger click
-//   useEffect(() => {
-//     const btn = document.getElementById('hamburger');
-//     btn?.addEventListener('click', () => setDrawerOpen(o => !o));
-//   }, []);
-
-//   return (
-//     <div>
-//       <NavBar />
-//       <SideDrawer open={drawerOpen} />
-//       <AnimatePresence mode="wait">
-//         <motion.main
-//           key={location.pathname}
-//           initial={{ opacity: 0, y: 10 }}
-//           animate={{ opacity: 1, y: 0 }}
-//           exit={{ opacity: 0, y: -10 }}
-//           transition={{ duration: 0.3 }}
-//           className="p-4 min-h-screen"
-//         >
-//           {children}
-//         </motion.main>
-//       </AnimatePresence>
-//     </div>
-//   );
-// }
-
+// src/components/Layout.tsx
 import { ReactNode } from "react"
 import NavBar from "./NavBar"
 import { AnimatePresence, motion } from "framer-motion"
@@ -47,11 +13,11 @@ export default function Layout({ children }: { children: ReactNode }) {
       <AnimatePresence mode="wait">
         <motion.main
           key={location.pathname}
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3 }}
-          className="px-6 py-4"
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.28, ease: "easeInOut" }}
+          className="pt-14"
         >
           {children}
         </motion.main>

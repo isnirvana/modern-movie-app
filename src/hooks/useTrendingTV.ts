@@ -15,6 +15,7 @@ export const useTrendingTV = () =>
   useInfiniteQuery({
     queryKey: ["trendingTV"],
     queryFn: fetchTrendingTV,
-    getNextPageParam: (lastPage) =>
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: any) =>
       lastPage.page < lastPage.total_pages ? lastPage.page + 1 : undefined,
   })

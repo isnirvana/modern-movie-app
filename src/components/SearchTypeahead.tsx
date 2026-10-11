@@ -3,24 +3,28 @@ import { useState, useEffect, useRef } from "react"
 import { useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import { useNavigate } from "react-router-dom"
-import { Search as SearchIcon } from "lucide-react"
+import { Search as SearchIcon, Loader2, Tv, Film } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY
 const TMDB_BASE = "https://api.themoviedb.org/3"
 
-export default function SearchTypeahead() {
+export default function SearchTypeahead({ autoFocus }: { autoFocus?: boolean }) {
   const [input, setInput] = useState("")
   const [debounced, setDebounced] = useState("")
   const navigate = useNavigate()
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  // Debounce the input
   useEffect(() => {
-    const timer = setTimeout(() => setDebounced(input.trim()), 500)
+    if (autoFocus) inputRef.current?.focus()
+  }, [autoFocus])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(input.trim()), 400)
     return () => clearTimeout(timer)
   }, [input])
 
-  // Fetch suggestions
   const { data: suggestions = [], isFetching } = useQuery({
     queryKey: ["typeahead", debounced],
     queryFn: async () => {
@@ -37,13 +41,9 @@ export default function SearchTypeahead() {
     staleTime: 1000 * 60,
   })
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setDebounced("")
       }
     }
@@ -51,16 +51,13 @@ export default function SearchTypeahead() {
     return () => document.removeEventListener("mousedown", handler)
   }, [])
 
-  // Navigate to detail
   const goToDetail = (item: any) => {
-    const path =
-      item.media_type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`
+    const path = item.media_type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`
     navigate(path)
     setInput("")
     setDebounced("")
   }
 
-  // Navigate to full search results
   const goToSearchPage = () => {
     if (input.trim()) {
       navigate(`/search?query=${encodeURIComponent(input.trim())}`)
@@ -69,64 +66,86 @@ export default function SearchTypeahead() {
     }
   }
 
+  const showDropdown = debounced.length >= 2
+
   return (
     <div className="relative" ref={containerRef}>
-      <div className="flex items-center bg-surface rounded overflow-hidden">
+      <div className="flex items-center gap-2 glass rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-primary/50 transition-shadow">
+        {isFetching ? (
+          <Loader2 size={16} className="text-gray-400 shrink-0 animate-spin" />
+        ) : (
+          <SearchIcon size={16} className="text-gray-400 shrink-0" />
+        )}
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              // if there’s a suggestion highlighted, go there; otherwise, go to search page
-              if (suggestions.length > 0) {
-                goToDetail(suggestions[0])
-              } else {
-                goToSearchPage()
-              }
+              if (suggestions.length > 0) goToDetail(suggestions[0])
+              else goToSearchPage()
             }
           }}
-          placeholder="Search movies or TV..."
-          className="px-2 py-1 bg-surface text-white placeholder-gray-400 flex-1 focus:outline-none"
+          ref={inputRef}
+          placeholder="Search movies or TV…"
+          className="bg-transparent text-sm text-white placeholder-gray-500 flex-1 focus:outline-none"
         />
-        <button
-          onClick={goToSearchPage}
-          className="p-2 hover:bg-surface/80 transition"
-        >
-          <SearchIcon size={18} className="text-gray-400" />
-        </button>
+        {input && (
+          <button
+            onClick={() => { setInput(""); setDebounced("") }}
+            className="text-gray-500 hover:text-white transition text-xs leading-none"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
-      {debounced && (
-        <ul className="absolute z-50 mt-1 w-full bg-surface rounded shadow-lg max-h-64 overflow-auto">
-          {isFetching && <li className="p-2 text-gray-400">Loading...</li>}
-          {!isFetching && suggestions.length === 0 && (
-            <li className="p-2 text-gray-400">No results.</li>
-          )}
-          {!isFetching &&
-            suggestions.map((item: any) => (
-              <li
-                key={`${item.media_type}-${item.id}`}
-                className="flex items-center p-2 hover:bg-gray-700 cursor-pointer"
-                onClick={() => goToDetail(item)}
-              >
-                <img
-                  src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
-                  alt={item.title || item.name}
-                  className="w-8 h-12 object-cover rounded mr-2 flex-shrink-0"
-                />
-                <div>
-                  <p className="text-sm text-white truncate">
-                    {item.title || item.name}
-                  </p>
-                  <p className="text-xs text-gray-400 uppercase">
-                    {item.media_type === "tv" ? "TV Show" : "Movie"}
-                  </p>
-                </div>
+      <AnimatePresence>
+        {showDropdown && (
+          <motion.ul
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 mt-2 w-full glass-dark rounded-xl shadow-card overflow-hidden max-h-80 overflow-y-auto"
+          >
+            {isFetching && (
+              <li className="flex items-center gap-2 px-4 py-3 text-sm text-gray-400">
+                <Loader2 size={14} className="animate-spin" /> Searching…
               </li>
-            ))}
-        </ul>
-      )}
+            )}
+            {!isFetching && suggestions.length === 0 && (
+              <li className="px-4 py-3 text-sm text-gray-500">No results found.</li>
+            )}
+            {!isFetching &&
+              suggestions.map((item: any) => (
+                <li
+                  key={`${item.media_type}-${item.id}`}
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-primary/12 cursor-pointer transition-colors"
+                  onClick={() => goToDetail(item)}
+                >
+                  <img
+                    src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
+                    alt={item.title || item.name}
+                    className="w-9 h-14 object-cover rounded-lg flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {item.title || item.name}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-[10px] mt-0.5 px-2 py-0.5 rounded-full bg-surface-3 text-gray-400">
+                      {item.media_type === "tv" ? (
+                        <><Tv size={9} /> TV Show</>
+                      ) : (
+                        <><Film size={9} /> Movie</>
+                      )}
+                    </span>
+                  </div>
+                </li>
+              ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
