@@ -4,7 +4,7 @@ import Logo from "./Logo"
 
 export default function Footer() {
   return (
-    <footer className="mt-12 border-t border-white/[0.07]">
+    <footer className="hidden md:block mt-12 border-t border-white/[0.07]">
       <div className="max-w-screen-2xl mx-auto px-5 md:px-12 py-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
         <Link to="/" aria-label="Lumo home">
           <Logo size={28} textClassName="text-lg" />

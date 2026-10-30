@@ -5,6 +5,7 @@ import { useTVDetails } from "../hooks/useTVDetails"
 import { useSeasonDetails } from "../hooks/useSeasonDetails"
 import CastCarousel from "../components/CastCarousel"
 import PlayerModal from "../components/PlayerModal"
+import MobilePlayBar from "../components/MobilePlayBar"
 import { tvServers } from "../utils/servers"
 import { motion } from "framer-motion"
 import { Play, Star, Calendar, ChevronLeft, ChevronDown, Tv } from "lucide-react"
@@ -80,7 +81,8 @@ export default function TVDetails() {
   )
 
   return (
-    <div className="text-white">
+    // Bottom padding on phones keeps the pinned play bar from covering the cast row
+    <div className="text-white pb-24 md:pb-0">
 
       {/* ══════════════════════════════════════════════
           MOBILE LAYOUT — Portrait poster + info below
@@ -117,7 +119,7 @@ export default function TVDetails() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="px-5 pt-2 pb-8 space-y-3"
+          className="px-5 pt-2 pb-6 space-y-3"
         >
           {/* Genres */}
           {genres.length > 0 && (
@@ -151,11 +153,13 @@ export default function TVDetails() {
 
           {/* Pickers */}
           {SeasonEpisodePickers}
-
-          <button onClick={() => setWatching(true)} className="btn-primary w-full justify-center py-3">
-            <Play size={15} fill="white" /> Play S{season} E{episode}
-          </button>
         </motion.div>
+
+        <MobilePlayBar>
+          <button onClick={() => setWatching(true)} className="btn-primary w-full justify-center py-3.5 text-base">
+            <Play size={16} fill="white" /> Play S{season} E{episode}
+          </button>
+        </MobilePlayBar>
       </div>
 
       {/* ══════════════════════════════════════════════

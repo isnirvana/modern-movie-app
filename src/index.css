@@ -15,6 +15,15 @@ body {
   @apply bg-bg text-white;
   font-family: "Inter", sans-serif;
   overflow-x: hidden;
+  /* App-like touch: no grey tap flash, no double-tap zoom delay, no pull-to-refresh bounce revealing white */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
+}
+
+/* Hide scrollbars on horizontal rows while keeping them scrollable */
+.overflow-x-auto::-webkit-scrollbar {
+  display: none;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────── */

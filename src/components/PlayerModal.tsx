@@ -111,11 +111,10 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
               </button>
             </div>
 
-            {/* Server switcher */}
+            {/* Server switcher — under the video on phones (thumb reach), under the header on desktop */}
             {servers.length > 1 && (
               <div
-                className="flex-shrink-0 flex items-center gap-2 px-4 py-2 md:px-5 overflow-x-auto"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+                className="order-last md:order-none flex-shrink-0 flex items-center gap-2 px-4 py-3 md:py-2 md:px-5 overflow-x-auto border-t md:border-t-0 md:border-b border-white/[0.06]"
               >
                 <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-gray-500 font-semibold flex-shrink-0">
                   <ServerIcon size={12} /> Server
@@ -127,7 +126,7 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
                       key={s.name}
                       onClick={() => setServerIndex(i)}
                       aria-pressed={active}
-                      className={`flex-shrink-0 px-3 py-1 text-xs rounded-full font-medium transition-colors ${
+                      className={`flex-shrink-0 px-4 py-2 md:px-3 md:py-1 text-sm md:text-xs rounded-full font-medium transition-colors ${
                         active ? "bg-primary text-white" : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white"
                       }`}
                     >

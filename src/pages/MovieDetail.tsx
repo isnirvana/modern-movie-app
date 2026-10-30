@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useMovieDetails } from "../hooks/useMovieDetails"
 import CastCarousel from "../components/CastCarousel"
 import PlayerModal from "../components/PlayerModal"
+import MobilePlayBar from "../components/MobilePlayBar"
 import { movieServers } from "../utils/servers"
 import { motion } from "framer-motion"
 import { Play, Star, Clock, Calendar, ChevronLeft } from "lucide-react"
@@ -31,7 +32,8 @@ export default function MovieDetail() {
   const genres: { id: number; name: string }[] = m.genres ?? []
 
   return (
-    <div className="text-white">
+    // Bottom padding on phones keeps the pinned play bar from covering the cast row
+    <div className="text-white pb-24 md:pb-0">
 
       {/* ══════════════════════════════════════════════
           MOBILE LAYOUT — Portrait poster + info below
@@ -64,7 +66,7 @@ export default function MovieDetail() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="px-5 pt-2 pb-8 space-y-3"
+          className="px-5 pt-2 pb-6 space-y-3"
         >
           {/* Genres */}
           {genres.length > 0 && (
@@ -96,10 +98,13 @@ export default function MovieDetail() {
             <p className="text-sm text-gray-400 line-clamp-4 leading-relaxed">{m.overview}</p>
           )}
 
-          <button onClick={() => setWatching(true)} className="btn-primary w-full justify-center py-3">
-            <Play size={15} fill="white" /> Watch Now
-          </button>
         </motion.div>
+
+        <MobilePlayBar>
+          <button onClick={() => setWatching(true)} className="btn-primary w-full justify-center py-3.5 text-base">
+            <Play size={16} fill="white" /> Watch Now
+          </button>
+        </MobilePlayBar>
       </div>
 
       {/* ══════════════════════════════════════════════
