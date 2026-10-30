@@ -5,7 +5,7 @@ import LoadingSkeleton from "../components/LoadingSkeleton"
 
 export default function MoviesPage() {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useTrending()
+    useTrending("movie")
 
   const movies = data?.pages.flatMap((p) => p.results) || []
 
@@ -13,7 +13,7 @@ export default function MoviesPage() {
 
   return (
     <ContentShelf
-      title="Movies & Shows"
+      title="Trending Movies"
       items={movies}
       fetchNextPage={fetchNextPage}
       hasNextPage={hasNextPage}

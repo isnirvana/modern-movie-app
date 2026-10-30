@@ -2,7 +2,6 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Link } from "react-router-dom"
-import { ChevronRight } from "lucide-react"
 import MovieCard from "./MovieCard"
 
 interface ContentShelfProps {
@@ -49,18 +48,13 @@ export default function ContentShelf({
   const displayItems = items.slice(0, fetchNextPage ? items.length : visible)
 
   return (
-    <section className="px-6 md:px-12 py-10">
+    <section className="px-5 md:px-12 py-8">
       {/* Section header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <span className="w-1 h-6 rounded-full bg-gradient-to-b from-primary to-accent" />
           <h2 className="section-heading">{title}</h2>
         </div>
-        {(hasNextPage || visible < items.length) && (
-          <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-primary transition-colors font-medium">
-            View all <ChevronRight size={14} />
-          </button>
-        )}
       </div>
 
       {/* Grid */}

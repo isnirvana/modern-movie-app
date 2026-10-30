@@ -4,15 +4,16 @@ import { useParams, useNavigate } from "react-router-dom"
 import { useTVDetails } from "../hooks/useTVDetails"
 import { useSeasonDetails } from "../hooks/useSeasonDetails"
 import CastCarousel from "../components/CastCarousel"
-import { motion, AnimatePresence } from "framer-motion"
-import { Play, X, Star, Calendar, ChevronLeft, ChevronDown, Tv } from "lucide-react"
+import PlayerModal from "../components/PlayerModal"
+import { tvServers } from "../utils/servers"
+import { motion } from "framer-motion"
+import { Play, Star, Calendar, ChevronLeft, ChevronDown, Tv } from "lucide-react"
 
 export default function TVDetails() {
   const { id } = useParams<{ id: string }>()
   const tvId = Number(id)
   const { data: tv, isLoading } = useTVDetails(tvId)
   const navigate = useNavigate()
-  const imdbId = tv?.external_ids?.imdb_id ?? tv?.imdb_id
 
   const [season, setSeason] = useState(1)
   const { data: seasonData } = useSeasonDetails(tvId, season)
@@ -23,17 +24,6 @@ export default function TVDetails() {
   useEffect(() => {
     setEpisode(episodes[0]?.episode_number || 1)
   }, [season, episodes])
-
-  useEffect(() => {
-    if (!watching) return
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [watching])
 
   if (isLoading || !tv) {
     return (
@@ -61,7 +51,7 @@ export default function TVDetails() {
           className="appearance-none pl-3 pr-7 py-2 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
           style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
         >
-          {seasons.map((s) => (
+          {seasons.map((s: { season_number: number; name?: string }) => (
             <option key={s.season_number} value={s.season_number} className="bg-[#16161f] text-white">
               {s.name || `Season ${s.season_number}`}
             </option>
@@ -78,7 +68,7 @@ export default function TVDetails() {
           className="appearance-none pl-3 pr-7 py-2 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer disabled:opacity-40"
           style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
         >
-          {episodes.map((ep) => (
+          {episodes.map((ep: { episode_number: number; name: string }) => (
             <option key={ep.episode_number} value={ep.episode_number} className="bg-[#16161f] text-white">
               {ep.episode_number}. {ep.name}
             </option>
@@ -248,95 +238,14 @@ export default function TVDetails() {
         </section>
       )}
 
-      {/* ── Watch Modal ───────────────────────────────── */}
-      <AnimatePresence>
-        {watching && (
-          <motion.div
-            className="fixed inset-0 z-[80] flex flex-col md:items-center md:justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
-          >
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black md:bg-black/80"
-              style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
-              onClick={() => setWatching(false)}
-            />
-
-            {/* Panel: full-screen on mobile, centered card on desktop */}
-            <motion.div
-              className="relative z-10 flex flex-col w-full h-full md:h-auto md:max-w-5xl md:mx-6 md:rounded-2xl overflow-hidden"
-              style={{
-                background: "linear-gradient(145deg, #0f1117 0%, #0a0c14 100%)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                boxShadow: "0 -8px 60px rgba(0,0,0,0.8)",
-              }}
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 32, stiffness: 320 }}
-            >
-              {/* Header bar */}
-              <div
-                className="flex-shrink-0 flex items-center gap-3 px-4 py-3 md:px-5 md:py-4"
-                style={{
-                  background: "linear-gradient(90deg, rgba(108,99,255,0.14) 0%, rgba(247,37,133,0.07) 100%)",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                {/* Mini poster */}
-                {tv.poster_path && (
-                  <img
-                    src={`https://image.tmdb.org/t/p/w92${tv.poster_path}`}
-                    alt={tv.name}
-                    className="w-9 h-14 object-cover rounded-lg flex-shrink-0 ring-1 ring-white/10"
-                  />
-                )}
-
-                {/* Title info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] uppercase tracking-[0.2em] text-primary/70 font-semibold mb-0.5">Now Watching</p>
-                  <h3 className="text-sm md:text-base font-bold text-white leading-snug truncate">
-                    {tv.name}
-                  </h3>
-                  <p className="text-[10px] text-gray-500 mt-0.5">
-                    Season {season} &middot; Episode {episode}
-                  </p>
-                </div>
-
-                {/* Close button */}
-                <button
-                  onClick={() => setWatching(false)}
-                  className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-colors"
-                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
-                  aria-label="Close player"
-                >
-                  <X size={17} />
-                </button>
-              </div>
-
-              {/* Purple→pink accent line */}
-              <div
-                className="flex-shrink-0 h-[2px] w-full"
-                style={{ background: "linear-gradient(90deg, #6c63ff, #f72585, transparent)" }}
-              />
-
-              {/* Player — fills all remaining height */}
-              <div className="flex-1 relative w-full bg-black" style={{ minHeight: 0 }}>
-                <iframe
-                  src={imdbId ? `https://vidfast.vc/tv/${imdbId}/${season}/${episode}?nextButton=false` : ""}
-                  allowFullScreen
-                  allow="autoplay; fullscreen"
-                  className="absolute inset-0 w-full h-full"
-                  style={{ border: "none" }}
-                />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <PlayerModal
+        open={watching}
+        onClose={() => setWatching(false)}
+        servers={tvServers(tvId, season, episode, tv.external_ids?.imdb_id ?? tv.imdb_id)}
+        title={tv.name}
+        subtitle={`Season ${season} · Episode ${episode}`}
+        posterPath={tv.poster_path}
+      />
     </div>
   )
 }

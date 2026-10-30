@@ -5,7 +5,8 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
-    "lint": "eslint . --ext .ts,.tsx"
+    "lint": "eslint . --ext .ts,.tsx",
+    "generate-pwa-assets": "pwa-assets-generator"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.75.7",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@types/react": "^18.3.21",
     "@types/react-dom": "^18.3.7",
+    "@vite-pwa/assets-generator": "^0.2.6",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.21",
     "eslint": "^8.57.1",
@@ -29,7 +31,8 @@
     "prettier": "^2.8.8",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
-    "vite": "^4.5.14"
+    "vite": "^4.5.14",
+    "vite-plugin-pwa": "^0.20.5"
   },
   "main": "postcss.config.js",
   "keywords": [],

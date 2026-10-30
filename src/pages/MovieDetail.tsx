@@ -1,10 +1,12 @@
 // src/pages/MovieDetail.tsx
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useMovieDetails } from "../hooks/useMovieDetails"
 import CastCarousel from "../components/CastCarousel"
-import { motion, AnimatePresence } from "framer-motion"
-import { Play, X, Star, Clock, Calendar, ChevronLeft } from "lucide-react"
+import PlayerModal from "../components/PlayerModal"
+import { movieServers } from "../utils/servers"
+import { motion } from "framer-motion"
+import { Play, Star, Clock, Calendar, ChevronLeft } from "lucide-react"
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>()
@@ -12,18 +14,6 @@ export default function MovieDetail() {
   const { data: m, isLoading } = useMovieDetails(movieId)
   const [watching, setWatching] = useState(false)
   const navigate = useNavigate()
-  const imdbId = m?.imdb_id
-
-  useEffect(() => {
-    if (!watching) return
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [watching])
 
   if (isLoading || !m) {
     return (
@@ -189,140 +179,14 @@ export default function MovieDetail() {
         </section>
       )}
 
-      <AnimatePresence>
-        {watching && (
-          <>
-            <motion.div
-              key="backdrop"
-              className="fixed inset-0 z-[79] bg-black/85"
-              style={{ backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setWatching(false)}
-            />
-
-            <motion.div
-              key="mobile-panel"
-              className="md:hidden fixed inset-0 z-[80] flex flex-col"
-              style={{
-                background: "linear-gradient(160deg, #0f1117 0%, #0a0c14 100%)",
-              }}
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 32, stiffness: 320 }}
-            >
-              <div
-                className="flex-shrink-0 flex items-center gap-3 px-4 py-3"
-                style={{
-                  background: "linear-gradient(90deg, rgba(108,99,255,0.14) 0%, rgba(247,37,133,0.07) 100%)",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
-                }}
-              >
-                {m.poster_path && (
-                  <img
-                    src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
-                    alt={m.title}
-                    className="w-9 h-14 object-cover rounded-lg flex-shrink-0 ring-1 ring-white/10"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] uppercase tracking-[0.2em] text-primary/70 font-semibold mb-0.5">Now Watching</p>
-                  <h3 className="text-sm font-bold text-white leading-snug truncate">{m.title}</h3>
-                  {m.release_date && (
-                    <p className="text-[10px] text-gray-500 mt-0.5">
-                      {new Date(m.release_date).getFullYear()}{m.runtime ? ` · ${m.runtime} min` : ""}
-                    </p>
-                  )}
-                </div>
-                <button
-                  onClick={() => setWatching(false)}
-                  className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full"
-                  style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
-                  aria-label="Close"
-                >
-                  <X size={17} />
-                </button>
-              </div>
-              <div className="flex-shrink-0 h-[2px]" style={{ background: "linear-gradient(90deg,#6c63ff,#f72585,transparent)" }} />
-              <div className="flex-1 relative bg-black" style={{ minHeight: 0 }}>
-                <iframe
-                  src={imdbId ? `https://share.cdnm.ink/embed/imdb/${imdbId}` : ""}
-                  allowFullScreen
-                  allow="autoplay; fullscreen"
-                  className="absolute inset-0 w-full h-full"
-                  style={{ border: "none" }}
-                />
-              </div>
-            </motion.div>
-
-            <motion.div
-              key="desktop-panel"
-              className="hidden md:flex fixed inset-0 z-[80] items-center justify-center px-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.div
-                className="relative w-full max-w-5xl rounded-2xl overflow-hidden"
-                style={{
-                  background: "linear-gradient(145deg, #0f1117 0%, #0a0c14 100%)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  boxShadow: "0 24px 80px rgba(0,0,0,0.85)",
-                }}
-                initial={{ scale: 0.93, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-              >
-                <div
-                  className="flex items-center gap-3 px-5 py-4"
-                  style={{
-                    background: "linear-gradient(90deg, rgba(108,99,255,0.14) 0%, rgba(247,37,133,0.07) 100%)",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                  }}
-                >
-                  {m.poster_path && (
-                    <img
-                      src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
-                      alt={m.title}
-                      className="w-9 h-14 object-cover rounded-lg flex-shrink-0 ring-1 ring-white/10"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[9px] uppercase tracking-[0.2em] text-primary/70 font-semibold mb-0.5">Now Watching</p>
-                    <h3 className="text-base font-bold text-white leading-snug truncate">{m.title}</h3>
-                    {m.release_date && (
-                      <p className="text-[10px] text-gray-500 mt-0.5">
-                        {new Date(m.release_date).getFullYear()}{m.runtime ? ` · ${m.runtime} min` : ""}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setWatching(false)}
-                    className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full"
-                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}
-                    aria-label="Close"
-                  >
-                    <X size={17} />
-                  </button>
-                </div>
-                <div className="h-[2px]" style={{ background: "linear-gradient(90deg,#6c63ff,#f72585,transparent)" }} />
-                <div className="relative w-full aspect-video bg-black">
-                  <iframe
-                    src={imdbId ? `https://share.cdnm.ink/embed/imdb/${imdbId}` : ""}
-                    allowFullScreen
-                    allow="autoplay; fullscreen"
-                    className="absolute inset-0 w-full h-full"
-                    style={{ border: "none" }}
-                  />
-                </div>
-              </motion.div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <PlayerModal
+        open={watching}
+        onClose={() => setWatching(false)}
+        servers={movieServers(movieId, m.imdb_id)}
+        title={m.title}
+        subtitle={[year, m.runtime ? `${m.runtime} min` : null].filter(Boolean).join(" · ") || undefined}
+        posterPath={m.poster_path}
+      />
     </div>
   )
 }

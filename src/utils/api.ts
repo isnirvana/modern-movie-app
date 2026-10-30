@@ -3,8 +3,6 @@ import axios from "axios"
 const TMDB_BASE = "https://api.themoviedb.org/3"
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY
 
-console.log(API_KEY)
-
 const api = axios.create({
   baseURL: TMDB_BASE,
   params: { api_key: API_KEY },
@@ -41,3 +39,11 @@ export const fetchTVDetails = (id: number) =>
   api
     .get(`/tv/${id}`, { params: { append_to_response: "credits,external_ids" } })
     .then((res) => res.data)
+
+// Fetch one page of any TMDB list endpoint, tagging each item with its media type
+export const fetchList = (path: string, mediaType?: "movie" | "tv") =>
+  api
+    .get(path)
+    .then((res) =>
+      res.data.results.map((item: any) => ({ ...item, media_type: item.media_type ?? mediaType }))
+    )

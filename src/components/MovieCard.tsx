@@ -9,13 +9,17 @@ interface Movie {
   name?: string
   vote_average?: number
   runtime?: number
-  poster_path: string
+  poster_path?: string | null
   media_type?: string
+  release_date?: string
+  first_air_date?: string
 }
 
 export default function MovieCard({ movie }: { movie: Movie }) {
   const title = movie.title || movie.name || "Untitled"
   const rating = movie.vote_average ?? 0
+  const date = movie.release_date || movie.first_air_date
+  const year = date ? date.slice(0, 4) : null
   const [imgError, setImgError] = useState(false)
 
   return (
@@ -73,8 +77,10 @@ export default function MovieCard({ movie }: { movie: Movie }) {
         <h3 className="text-sm font-semibold leading-tight line-clamp-2 text-white">
           {title}
         </h3>
-        {movie.runtime != null && (
-          <p className="text-xs text-gray-400 mt-0.5">{movie.runtime} min</p>
+        {(year || movie.runtime != null) && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            {[year, movie.runtime != null ? `${movie.runtime} min` : null].filter(Boolean).join(" · ")}
+          </p>
         )}
       </div>
     </motion.div>

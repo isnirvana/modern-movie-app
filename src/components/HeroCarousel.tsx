@@ -15,7 +15,8 @@ interface HeroItem {
   media_type?: "movie" | "tv"
 }
 
-export default function HeroCarousel({ items }: { items: HeroItem[] }) {
+export default function HeroCarousel({ items: allItems }: { items: HeroItem[] }) {
+  const items = allItems.filter((i) => i.backdrop_path)
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const navigate = useNavigate()
@@ -115,6 +116,7 @@ export default function HeroCarousel({ items }: { items: HeroItem[] }) {
             <button
               key={i}
               onClick={() => setIndex(i)}
+              aria-label={`Show slide ${i + 1}`}
               className={`rounded-full transition-all duration-300 ${i === index ? "w-6 h-1.5 bg-primary" : "w-1.5 h-1.5 bg-white/30"
                 }`}
             />
@@ -189,6 +191,7 @@ export default function HeroCarousel({ items }: { items: HeroItem[] }) {
             <button
               key={i}
               onClick={() => setIndex(i)}
+              aria-label={`Show slide ${i + 1}`}
               className={`rounded-full transition-all duration-400 ${i === index ? "w-7 h-2 bg-primary shadow-glow" : "w-2 h-2 bg-white/30 hover:bg-white/60"
                 }`}
             />

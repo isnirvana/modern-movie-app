@@ -33,11 +33,12 @@
 // src/pages/Home.tsx
 import HeroCarousel from "../components/HeroCarousel"
 import ContentShelf from "../components/ContentShelf"
+import MediaRow from "../components/MediaRow"
 import LoadingSkeleton from "../components/LoadingSkeleton"
 import { useTrending } from "../hooks/useTrending"
+import { useTmdbList } from "../hooks/useTmdbList"
 
 export default function Home() {
-  // ←—— Add your React Query hook here
   const {
     data,
     fetchNextPage,
@@ -45,8 +46,13 @@ export default function Home() {
     isFetchingNextPage = false,
   } = useTrending()
 
-  // ←—— Flatten pages into a single array
-  const movies = data?.pages.flatMap((page) => page.results) || []
+  const popularMovies = useTmdbList("/movie/popular", "movie")
+  const popularTV = useTmdbList("/tv/popular", "tv")
+  const topRated = useTmdbList("/movie/top_rated", "movie")
+  const nowPlaying = useTmdbList("/movie/now_playing", "movie")
+
+  // Flatten pages into a single array
+  const items = data?.pages.flatMap((page) => page.results) || []
 
   if (!data) {
     // still loading first page
@@ -55,13 +61,19 @@ export default function Home() {
 
   return (
     <>
-      {/* Optional: show HeroCarousel of first 5 */}
-      <HeroCarousel items={movies.slice(0, 5)} />
+      <HeroCarousel items={items.slice(0, 6)} />
 
-      {/* Infinite‐load shelf */}
+      <div className="md:-mt-6 relative z-10">
+        <MediaRow title="Now Playing" items={nowPlaying.data ?? []} isLoading={nowPlaying.isLoading} />
+        <MediaRow title="Popular Movies" items={popularMovies.data ?? []} isLoading={popularMovies.isLoading} to="/movies" />
+        <MediaRow title="Popular TV Shows" items={popularTV.data ?? []} isLoading={popularTV.isLoading} to="/tv" />
+        <MediaRow title="Top Rated" items={topRated.data ?? []} isLoading={topRated.isLoading} />
+      </div>
+
+      {/* Infinite-load grid */}
       <ContentShelf
         title="Trending Now"
-        items={movies}
+        items={items}
         fetchNextPage={fetchNextPage}
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}

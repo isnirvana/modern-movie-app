@@ -20,6 +20,20 @@ export default function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get("query") || ""
   const [filter, setFilter] = useState<"all" | "movie" | "tv">("all")
+  const [input, setInput] = useState(query)
+
+  // Keep the box in sync when the URL changes (e.g. navbar search)
+  useEffect(() => {
+    setInput(query)
+  }, [query])
+
+  // Update the URL shortly after typing stops, replacing instead of piling up history
+  useEffect(() => {
+    const next = input.trim()
+    if (next === query) return
+    const timer = setTimeout(() => setSearchParams(next ? { query: next } : {}, { replace: true }), 400)
+    return () => clearTimeout(timer)
+  }, [input, query, setSearchParams])
 
   useEffect(() => {
     setFilter("all")
@@ -51,17 +65,18 @@ export default function SearchResultsPage() {
       : results.filter((r: any) => r.media_type === filter)
 
   return (
-    <div className="min-h-screen px-6 md:px-12 pt-24 pb-16 text-white">
+    <div className="min-h-[70vh] px-5 md:px-12 pt-8 pb-16 text-white">
       {/* Search Bar */}
       <div className="max-w-2xl mx-auto mb-10">
         <div className="flex items-center glass rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-primary/50 transition-shadow">
           <Search size={18} className="text-gray-400 shrink-0 mr-3" />
           <input
             type="text"
-            value={query}
-            onChange={(e) => setSearchParams({ query: e.target.value })}
+            value={input}
+            autoFocus={!query}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") setSearchParams({ query })
+              if (e.key === "Enter" && input.trim()) setSearchParams({ query: input.trim() })
             }}
             placeholder="Search movies or TV shows…"
             className="flex-1 bg-transparent text-white placeholder-gray-500 focus:outline-none text-sm"
@@ -116,7 +131,13 @@ export default function SearchResultsPage() {
           Error loading results. Please try again.
         </p>
       )}
-      {!isLoading && !error && filtered.length === 0 && (
+      {!query && (
+        <div className="text-center py-24 text-gray-500">
+          <p className="text-lg font-medium text-gray-400">Search for a movie or TV show</p>
+          <p className="text-sm mt-1">Start typing above to see results.</p>
+        </div>
+      )}
+      {query && !isLoading && !error && filtered.length === 0 && (
         <div className="text-center py-24 text-gray-500">
           <p className="text-5xl mb-4">🎬</p>
           <p className="text-lg font-medium text-gray-400">No results found</p>

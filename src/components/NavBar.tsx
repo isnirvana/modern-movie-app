@@ -1,10 +1,11 @@
 // src/components/NavBar.tsx
 import { useState, useRef, useEffect } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { Menu, X, ChevronDown, Film, Tv, Radio, Layers, Search } from "lucide-react"
+import { Menu, X, ChevronDown, Film, Tv, Layers, Search, Download } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import SearchTypeahead from "./SearchTypeahead"
 import { useGenres } from "../hooks/useGenres"
+import { useInstallPrompt } from "../hooks/useInstallPrompt"
 
 export default function NavBar() {
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -12,8 +13,10 @@ export default function NavBar() {
   const [searchOpen, setSearchOpen] = useState(false)
   const drawerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const genresRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const { data: genres = [] } = useGenres()
+  const { canInstall, install } = useInstallPrompt()
 
   // Close everything on route change
   useEffect(() => {
@@ -35,6 +38,16 @@ export default function NavBar() {
     return () => document.removeEventListener("keydown", handler)
   }, [])
 
+  // Close the desktop genres menu when clicking anywhere else
+  useEffect(() => {
+    if (!genresOpen || drawerOpen) return
+    const handler = (e: MouseEvent) => {
+      if (genresRef.current && !genresRef.current.contains(e.target as Node)) setGenresOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [genresOpen, drawerOpen])
+
   // Lock body scroll when drawer is open
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : ""
@@ -51,7 +64,6 @@ export default function NavBar() {
   const navLinks = [
     { to: "/movies", label: "Movies", icon: <Film size={16} /> },
     { to: "/tv", label: "TV Shows", icon: <Tv size={16} /> },
-    { to: "/live", label: "Live", icon: <Radio size={16} /> },
   ]
 
   const isActive = (path: string) => location.pathname === path
@@ -103,7 +115,7 @@ export default function NavBar() {
             ))}
 
             {/* Genres dropdown (desktop) */}
-            <div className="relative">
+            <div className="relative" ref={genresRef}>
               <button
                 onClick={() => setGenresOpen((o) => !o)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -127,7 +139,7 @@ export default function NavBar() {
                     className="absolute top-full mt-2 left-0 rounded-xl shadow-card w-44 overflow-auto max-h-72 py-1 z-50"
                     style={{ background: "#16161f", border: "1px solid rgba(255,255,255,0.08)" }}
                   >
-                    {genres.map((g) => (
+                    {genres.map((g: { id: number; name: string }) => (
                       <li key={g.id}>
                         <Link
                           to={`/genre/${g.id}`}
@@ -148,6 +160,17 @@ export default function NavBar() {
           <div className="hidden md:block flex-1 max-w-sm ml-auto">
             <SearchTypeahead />
           </div>
+
+          {/* Install app (desktop, only when the browser offers it) */}
+          {canInstall && (
+            <button
+              onClick={install}
+              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-all duration-200 shrink-0"
+            >
+              <Download size={15} />
+              Install
+            </button>
+          )}
 
           {/* Mobile search icon button (far right) */}
           <button
@@ -278,7 +301,7 @@ export default function NavBar() {
                         className="overflow-hidden"
                       >
                         <div className="pl-3 py-1 flex flex-col gap-0.5">
-                          {genres.map((g) => (
+                          {genres.map((g: { id: number; name: string }) => (
                             <li key={g.id} className="list-none">
                               <Link
                                 to={`/genre/${g.id}`}
@@ -294,6 +317,17 @@ export default function NavBar() {
                     )}
                   </AnimatePresence>
                 </div>
+
+                {/* Install app (mobile) */}
+                {canInstall && (
+                  <button
+                    onClick={() => { setDrawerOpen(false); install() }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 transition-all mt-2"
+                  >
+                    <Download size={16} />
+                    Install app
+                  </button>
+                )}
               </div>
             </motion.div>
           </>
