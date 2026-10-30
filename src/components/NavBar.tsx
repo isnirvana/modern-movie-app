@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom"
 import { Menu, X, ChevronDown, Film, Tv, Layers, Search, Download } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import SearchTypeahead from "./SearchTypeahead"
+import Logo from "./Logo"
 import { useGenres } from "../hooks/useGenres"
 import { useInstallPrompt } from "../hooks/useInstallPrompt"
 
@@ -86,15 +87,8 @@ export default function NavBar() {
           </button>
 
           {/* Logo */}
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-xl font-bold shrink-0"
-            style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-          >
-            <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-black shadow-glow">
-              P
-            </span>
-            <span className="text-gradient hidden sm:inline">Prime</span>
+          <Link to="/" className="shrink-0" aria-label="Lumo home">
+            <Logo />
           </Link>
 
           {/* Desktop nav links */}
@@ -241,13 +235,9 @@ export default function NavBar() {
                 <Link
                   to="/"
                   onClick={() => setDrawerOpen(false)}
-                  className="flex items-center gap-2"
-                  style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                  aria-label="Lumo home"
                 >
-                  <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center font-black text-sm shadow-glow">
-                    P
-                  </span>
-                  <span className="text-lg font-bold text-gradient">Prime</span>
+                  <Logo size={36} textClassName="text-lg" />
                 </Link>
                 <button
                   onClick={() => setDrawerOpen(false)}

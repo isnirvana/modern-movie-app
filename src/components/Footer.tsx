@@ -1,15 +1,13 @@
 // src/components/Footer.tsx
 import { Link } from "react-router-dom"
+import Logo from "./Logo"
 
 export default function Footer() {
   return (
     <footer className="mt-12 border-t border-white/[0.07]">
       <div className="max-w-screen-2xl mx-auto px-5 md:px-12 py-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-        <Link to="/" className="flex items-center gap-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center text-xs font-black text-white">
-            P
-          </span>
-          <span className="text-gradient font-bold">Prime</span>
+        <Link to="/" aria-label="Lumo home">
+          <Logo size={28} textClassName="text-lg" />
         </Link>
         <nav className="flex items-center gap-5">
           <Link to="/movies" className="hover:text-white transition-colors">Movies</Link>

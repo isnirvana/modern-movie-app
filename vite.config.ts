@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.svg'],
       manifest: {
-        name: 'Prime — Movies & TV',
-        short_name: 'Prime',
+        name: 'Lumo — Movies & TV',
+        short_name: 'Lumo',
         description: 'Browse and watch trending movies and TV shows.',
         theme_color: '#0a0a0f',
         background_color: '#0a0a0f',

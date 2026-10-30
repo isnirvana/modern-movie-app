@@ -6,7 +6,7 @@
     "build": "vite build",
     "serve": "vite preview",
     "lint": "eslint . --ext .ts,.tsx",
-    "generate-pwa-assets": "pwa-assets-generator"
+    "generate-pwa-assets": "pwa-assets-generator && node scripts/maskable-icon.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.75.7",
