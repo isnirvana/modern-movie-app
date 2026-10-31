@@ -1,23 +1,26 @@
 // src/components/BottomNav.tsx
-// Mobile-only tab bar (native app style) with a genres bottom sheet
+// Mobile-only tab bar (native app style) with a Browse sheet (Movies, TV Shows, genres)
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useDragControls } from "framer-motion"
-import { Home, Film, Tv, Search, Layers, Download, X } from "lucide-react"
+import { Home, Film, Tv, Search, Compass, Bookmark, Download, X, ChevronRight } from "lucide-react"
 import { useGenres } from "../hooks/useGenres"
 import { useInstallPrompt } from "../hooks/useInstallPrompt"
+import MediaTypeToggle from "./MediaTypeToggle"
+import { genrePath, type MediaType } from "../utils/genres"
 
 const tabs = [
   { to: "/", label: "Home", icon: Home },
   { to: "/movies", label: "Movies", icon: Film },
-  { to: "/tv", label: "TV", icon: Tv },
+  { to: "/my-list", label: "My List", icon: Bookmark },
   { to: "/search", label: "Search", icon: Search },
 ]
 
 export default function BottomNav() {
   const location = useLocation()
   const [sheetOpen, setSheetOpen] = useState(false)
-  const { data: genres = [] } = useGenres()
+  const [genreType, setGenreType] = useState<MediaType>("movie")
+  const { data: genres = [] } = useGenres(genreType)
   const { canInstall, install } = useInstallPrompt()
   const dragControls = useDragControls()
 
@@ -39,7 +42,8 @@ export default function BottomNav() {
 
   const isActive = (to: string) =>
     to === "/" ? location.pathname === "/" : location.pathname.startsWith(to)
-  const genresActive = sheetOpen || location.pathname.startsWith("/genre/")
+  // Browse covers the sheet and the pages it leads to
+  const browseActive = sheetOpen || location.pathname.startsWith("/genre/") || location.pathname === "/tv"
 
   const tabClass = (active: boolean) =>
     `relative flex-1 flex flex-col items-center justify-center gap-1 h-16 text-[10px] font-medium transition-colors select-none ${
@@ -76,21 +80,21 @@ export default function BottomNav() {
               </Link>
             )
           })}
-          <button onClick={() => setSheetOpen((o) => !o)} className={tabClass(genresActive)} aria-expanded={sheetOpen}>
-            {genresActive && (
+          <button onClick={() => setSheetOpen((o) => !o)} className={tabClass(browseActive)} aria-expanded={sheetOpen}>
+            {browseActive && (
               <motion.span
                 layoutId="tab-indicator"
                 className="absolute top-0 h-[3px] w-8 rounded-b-full bg-gradient-to-r from-primary to-accent"
                 transition={{ type: "spring", damping: 30, stiffness: 400 }}
               />
             )}
-            <Layers size={21} strokeWidth={genresActive ? 2.4 : 1.8} className={genresActive ? "text-primary" : ""} />
-            Genres
+            <Compass size={21} strokeWidth={browseActive ? 2.4 : 1.8} className={browseActive ? "text-primary" : ""} />
+            Browse
           </button>
         </div>
       </nav>
 
-      {/* ── Genres bottom sheet ─────────────────────────── */}
+      {/* ── Browse bottom sheet ─────────────────────────── */}
       <AnimatePresence>
         {sheetOpen && (
           <>
@@ -107,7 +111,7 @@ export default function BottomNav() {
               key="sheet"
               role="dialog"
               aria-modal="true"
-              aria-label="Genres"
+              aria-label="Browse"
               className="md:hidden fixed left-0 right-0 bottom-0 z-[70] rounded-t-3xl flex flex-col"
               style={{
                 background: "#0e0e18",
@@ -136,11 +140,11 @@ export default function BottomNav() {
               >
                 <div className="mx-auto w-10 h-1.5 rounded-full bg-white/20 mb-3" />
                 <div className="flex items-center justify-between">
-                  <h2 className="section-heading text-lg">Genres</h2>
+                  <h2 className="section-heading text-lg">Browse</h2>
                   <button
                     onClick={() => setSheetOpen(false)}
                     className="w-8 h-8 flex items-center justify-center rounded-full bg-white/[0.07] text-gray-400"
-                    aria-label="Close genres"
+                    aria-label="Close browse"
                   >
                     <X size={16} />
                   </button>
@@ -156,13 +160,41 @@ export default function BottomNav() {
                     <Download size={17} /> Install Lumo app
                   </button>
                 )}
+                {/* Quick links */}
+                <div className="grid grid-cols-2 gap-2 mb-6">
+                  {[
+                    { to: "/movies", label: "Movies", sub: "Trending now", icon: Film },
+                    { to: "/tv", label: "TV Shows", sub: "Trending now", icon: Tv },
+                  ].map(({ to, label, sub, icon: Icon }) => (
+                    <Link
+                      key={to}
+                      to={to}
+                      className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 border border-white/[0.08] active:from-primary/30"
+                    >
+                      <span className="w-9 h-9 rounded-xl bg-primary/25 flex items-center justify-center flex-shrink-0">
+                        <Icon size={17} className="text-white" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-white">{label}</span>
+                        <span className="block text-[11px] text-gray-400">{sub}</span>
+                      </span>
+                      <ChevronRight size={15} className="text-gray-500" />
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h3 className="text-xs uppercase tracking-[0.14em] font-semibold text-gray-500">Genres</h3>
+                  <MediaTypeToggle id="sheet-genres" value={genreType} onChange={setGenreType} />
+                </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {genres.map((g: { id: number; name: string }) => {
-                    const active = location.pathname === `/genre/${g.id}`
+                  {genres.map((g) => {
+                    const to = genrePath(genreType, g.id)
+                    const active = location.pathname + location.search === to
                     return (
                       <Link
                         key={g.id}
-                        to={`/genre/${g.id}`}
+                        to={to}
                         className={`px-4 py-3 rounded-2xl text-sm font-medium transition-colors ${
                           active ? "bg-primary text-white" : "bg-white/[0.05] text-gray-300 active:bg-white/10"
                         }`}

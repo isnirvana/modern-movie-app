@@ -6,6 +6,9 @@ import CastCarousel from "../components/CastCarousel"
 import PlayerModal from "../components/PlayerModal"
 import MobilePlayBar from "../components/MobilePlayBar"
 import VideoRow from "../components/VideoRow"
+import MyListButton from "../components/MyListButton"
+import DetailsSection, { CertBadge } from "../components/DetailsSection"
+import { movieCertification, movieDetails, formatRuntime, languageName } from "../utils/details"
 import MediaRow from "../components/MediaRow"
 import { pickVideos, relatedItems, youtubeEmbed, type Video } from "../utils/media"
 import { movieServers, RESUME_SERVER } from "../utils/servers"
@@ -61,6 +64,22 @@ export default function MovieDetail() {
   const videos = pickVideos(m.videos?.results)
   const trailer = videos.find((v) => v.type === "Trailer") ?? videos[0]
   const related = relatedItems(m, "movie")
+  // Age rating, crew, money, studios
+  const cert = movieCertification(m)
+  const details = movieDetails(m)
+  const runtime = formatRuntime(m.runtime)
+  // Original language in the header only when it isn't English
+  const foreignLanguage = m.original_language && m.original_language !== "en" ? languageName(m.original_language) : null
+
+  const listItem = {
+    type: "movie" as const,
+    id: m.id,
+    title: m.title,
+    poster_path: m.poster_path,
+    backdrop_path: m.backdrop_path,
+    vote_average: m.vote_average,
+    release_date: m.release_date,
+  }
 
   return (
     // Bottom padding on phones keeps the pinned play bar from covering the cast row
@@ -121,19 +140,24 @@ export default function MovieDetail() {
                 <Star size={11} fill="currentColor" /> {rating.toFixed(1)}
               </span>
             )}
+            <CertBadge cert={cert} />
             {year && <span className="flex items-center gap-1"><Calendar size={11} className="text-gray-500" /> {year}</span>}
-            {m.runtime && <span className="flex items-center gap-1"><Clock size={11} className="text-gray-500" /> {m.runtime} min</span>}
+            {runtime && <span className="flex items-center gap-1"><Clock size={11} className="text-gray-500" /> {runtime}</span>}
+            {foreignLanguage && <span>{foreignLanguage}</span>}
           </div>
 
           {m.overview && (
             <p className="text-sm text-gray-400 line-clamp-4 leading-relaxed">{m.overview}</p>
           )}
 
-          {trailer && (
-            <button onClick={() => setVideo(trailer)} className="btn-secondary py-2 px-4 text-sm">
-              <Clapperboard size={15} /> Trailer
-            </button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {trailer && (
+              <button onClick={() => setVideo(trailer)} className="btn-secondary py-2 px-4 text-sm">
+                <Clapperboard size={15} /> Trailer
+              </button>
+            )}
+            <MyListButton item={listItem} className="btn-secondary py-2 px-4 text-sm" iconSize={15} />
+          </div>
 
         </motion.div>
 
@@ -196,8 +220,10 @@ export default function MovieDetail() {
                   <Star size={14} fill="currentColor" /> {rating.toFixed(1)}/10
                 </span>
               )}
+              <CertBadge cert={cert} large />
               {year && <span className="flex items-center gap-1.5"><Calendar size={13} className="text-gray-500" /> {year}</span>}
-              {m.runtime && <span className="flex items-center gap-1.5"><Clock size={13} className="text-gray-500" /> {m.runtime} min</span>}
+              {runtime && <span className="flex items-center gap-1.5"><Clock size={13} className="text-gray-500" /> {runtime}</span>}
+              {foreignLanguage && <span className="text-gray-400">{foreignLanguage}</span>}
             </div>
             {m.overview && (
               <p className="text-sm text-gray-300 max-w-lg line-clamp-4 leading-relaxed">{m.overview}</p>
@@ -211,12 +237,15 @@ export default function MovieDetail() {
                   <Clapperboard size={16} /> Trailer
                 </button>
               )}
+              <MyListButton item={listItem} />
             </div>
           </motion.div>
         </div>
       </div>
 
       <VideoRow videos={videos} onPlay={setVideo} />
+
+      <DetailsSection rows={details.rows} companies={details.companies} companiesLabel="Studios" />
 
       {m.credits?.cast?.length > 0 && (
         <section className="px-5 md:px-16 py-8">
@@ -249,7 +278,7 @@ export default function MovieDetail() {
           })
         }
         title={m.title}
-        subtitle={[year, m.runtime ? `${m.runtime} min` : null].filter(Boolean).join(" · ") || undefined}
+        subtitle={[year, runtime].filter(Boolean).join(" · ") || undefined}
         posterPath={m.poster_path}
       />
 

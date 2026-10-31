@@ -35,6 +35,7 @@ import HeroCarousel from "../components/HeroCarousel"
 import ContentShelf from "../components/ContentShelf"
 import MediaRow from "../components/MediaRow"
 import ContinueWatching from "../components/ContinueWatching"
+import { useMyList } from "../hooks/useMyList"
 import LoadingSkeleton from "../components/LoadingSkeleton"
 import { useTrending } from "../hooks/useTrending"
 import { useTmdbList } from "../hooks/useTmdbList"
@@ -51,6 +52,7 @@ export default function Home() {
   const popularTV = useTmdbList("/tv/popular", "tv")
   const topRated = useTmdbList("/movie/top_rated", "movie")
   const nowPlaying = useTmdbList("/movie/now_playing", "movie")
+  const myList = useMyList()
 
   // Flatten pages into a single array
   const items = data?.pages.flatMap((page) => page.results) || []
@@ -66,6 +68,7 @@ export default function Home() {
 
       <div className="md:-mt-6 relative z-10">
         <ContinueWatching />
+        <MediaRow title="My List" items={myList.map((i) => ({ ...i, media_type: i.type }))} to="/my-list" />
         <MediaRow title="Now Playing" items={nowPlaying.data ?? []} isLoading={nowPlaying.isLoading} />
         <MediaRow title="Popular Movies" items={popularMovies.data ?? []} isLoading={popularMovies.isLoading} to="/movies" />
         <MediaRow title="Popular TV Shows" items={popularTV.data ?? []} isLoading={popularTV.isLoading} to="/tv" />

@@ -23,6 +23,7 @@ import MovieDetail from "./pages/MovieDetail"
 import TVDetails from "./pages/TVDetails"
 import SearchResultsPage from "./pages/SearchResultsPage"
 import NotFound from "./pages/NotFound"
+import MyListPage from "./pages/MyListPage"
 import ErrorBoundary from "./components/ErrorBoundary"
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/tv/:id" element={<TVDetails />} />
           <Route path="/search" element={<SearchResultsPage />} />
+          <Route path="/my-list" element={<MyListPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>

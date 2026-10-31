@@ -2,18 +2,21 @@
 // Top bar. On phones it only shows the logo — navigation lives in BottomNav.
 import { useState, useRef, useEffect } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { ChevronDown, Film, Tv, Layers, Download } from "lucide-react"
+import { ChevronDown, Film, Tv, Layers, Download, Bookmark } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import SearchTypeahead from "./SearchTypeahead"
 import Logo from "./Logo"
 import { useGenres } from "../hooks/useGenres"
 import { useInstallPrompt } from "../hooks/useInstallPrompt"
+import MediaTypeToggle from "./MediaTypeToggle"
+import { genrePath, type MediaType } from "../utils/genres"
 
 export default function NavBar() {
   const [genresOpen, setGenresOpen] = useState(false)
   const genresRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
-  const { data: genres = [] } = useGenres()
+  const [genreType, setGenreType] = useState<MediaType>("movie")
+  const { data: genres = [] } = useGenres(genreType)
   const { canInstall, install } = useInstallPrompt()
 
   // Close the genres menu on route change
@@ -39,6 +42,7 @@ export default function NavBar() {
   const navLinks = [
     { to: "/movies", label: "Movies", icon: <Film size={16} /> },
     { to: "/tv", label: "TV Shows", icon: <Tv size={16} /> },
+    { to: "/my-list", label: "My List", icon: <Bookmark size={16} /> },
   ]
 
   const isActive = (path: string) => location.pathname === path
@@ -88,26 +92,29 @@ export default function NavBar() {
 
             <AnimatePresence>
               {genresOpen && (
-                <motion.ul
+                <motion.div
                   initial={{ opacity: 0, y: -8, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -8, scale: 0.96 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute top-full mt-2 left-0 rounded-xl shadow-card w-44 overflow-auto max-h-72 py-1 z-50"
+                  className="absolute top-full mt-2 left-0 rounded-xl shadow-card w-80 p-3 z-50"
                   style={{ background: "#16161f", border: "1px solid rgba(255,255,255,0.08)" }}
                 >
-                  {genres.map((g: { id: number; name: string }) => (
-                    <li key={g.id}>
-                      <Link
-                        to={`/genre/${g.id}`}
-                        onClick={() => setGenresOpen(false)}
-                        className="block px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-primary/15 transition-colors"
-                      >
-                        {g.name}
-                      </Link>
-                    </li>
-                  ))}
-                </motion.ul>
+                  <MediaTypeToggle id="nav-genres" value={genreType} onChange={setGenreType} />
+                  <ul className="grid grid-cols-2 gap-0.5 mt-3 max-h-80 overflow-auto">
+                    {genres.map((g) => (
+                      <li key={g.id}>
+                        <Link
+                          to={genrePath(genreType, g.id)}
+                          onClick={() => setGenresOpen(false)}
+                          className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-primary/15 transition-colors"
+                        >
+                          {g.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>

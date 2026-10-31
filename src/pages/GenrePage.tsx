@@ -1,97 +1,112 @@
 // src/pages/GenrePage.tsx
-import { useEffect, useState } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useState } from "react"
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom"
 import { useGenreMovies } from "../hooks/useGenreMovies"
+import { useGenres } from "../hooks/useGenres"
 import MovieCard from "../components/MovieCard"
 import LoadingSkeleton from "../components/LoadingSkeleton"
+import MediaTypeToggle from "../components/MediaTypeToggle"
+import { genrePath, matchGenre, SORT_OPTIONS, type MediaType, type SortKey } from "../utils/genres"
 import { motion } from "framer-motion"
-import { SlidersHorizontal, Loader2 } from "lucide-react"
-
-const GENRE_API = "https://api.themoviedb.org/3/genre/movie/list?language=en"
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY
-
-const SORT_OPTIONS = [
-  { value: "popularity.desc", label: "Most Popular" },
-  { value: "release_date.desc", label: "Newest First" },
-  { value: "vote_average.desc", label: "Highest Rated" },
-]
+import { SlidersHorizontal, Loader2, ChevronDown } from "lucide-react"
 
 export default function GenrePage() {
   const { id } = useParams()
-  const [genreName, setGenreName] = useState("")
-  const [sort, setSort] = useState("popularity.desc")
+  const genreId = Number(id)
+  const [searchParams] = useSearchParams()
+  const type: MediaType = searchParams.get("type") === "tv" ? "tv" : "movie"
+  const navigate = useNavigate()
+  const [sort, setSort] = useState<SortKey>("popular")
 
-  const { data, fetchNextPage, hasNextPage, isLoading, isFetchingNextPage, isFetching } =
-    useGenreMovies(Number(id), sort)
+  const { data: genres = [] } = useGenres(type)
+  const { data: otherGenres = [] } = useGenres(type === "movie" ? "tv" : "movie")
+  const genre = genres.find((g) => g.id === genreId)
+  // Same genre on the other side, if there is one (e.g. Action ↔ Action & Adventure)
+  const counterpart = matchGenre(genre, otherGenres)
 
-  useEffect(() => {
-    async function fetchGenres() {
-      const res = await fetch(`${GENRE_API}&api_key=${API_KEY}`)
-      const json = await res.json()
-      const genre = json.genres.find((g: any) => g.id === Number(id))
-      setGenreName(genre?.name || "Unknown")
-    }
-    fetchGenres()
-  }, [id])
+  const { data, fetchNextPage, hasNextPage, isLoading, isFetchingNextPage } =
+    useGenreMovies(type, genreId, sort)
+
+  const switchType = (next: MediaType) => {
+    if (next !== type && counterpart) navigate(genrePath(next, counterpart.id), { replace: true })
+  }
 
   if (isLoading) return <LoadingSkeleton />
 
   const allItems = data?.pages.flatMap((p) => p.results) ?? []
 
   return (
-    <div className="px-6 md:px-12 py-10">
+    <div className="px-5 md:px-12 py-8 md:py-10">
       {/* Header row */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3">
           <span className="w-1 h-7 rounded-full bg-gradient-to-b from-primary to-accent" />
-          <h1 className="section-heading text-2xl">{genreName}</h1>
+          <div>
+            <h1 className="section-heading text-2xl">{genre?.name ?? "Genre"}</h1>
+            <p className="text-xs text-gray-500 mt-0.5">{type === "tv" ? "TV Shows" : "Movies"}</p>
+          </div>
         </div>
 
-        {/* Sort selector */}
-        <div className="relative flex items-center gap-2">
-          <SlidersHorizontal size={15} className="text-gray-400" />
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="appearance-none pl-3 pr-8 py-2 glass rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
-          >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value} className="bg-surface-2 text-white">
-                {o.label}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <MediaTypeToggle
+            id="genre-page"
+            value={type}
+            onChange={switchType}
+            disabled={counterpart ? [] : [type === "movie" ? "tv" : "movie"]}
+          />
+
+          {/* Sort selector */}
+          <div className="relative flex items-center gap-2">
+            <SlidersHorizontal size={15} className="text-gray-400" />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              className="appearance-none pl-3 pr-8 py-2 glass rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value} className="bg-surface-2 text-white">
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={13} className="absolute right-2.5 text-gray-400 pointer-events-none" />
+          </div>
         </div>
       </div>
 
       {/* Grid */}
-      <motion.div
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-        initial="hidden"
-        animate="visible"
-        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.04 } } }}
-      >
-        {allItems.map((item: any) => (
-          <motion.div
-            key={item.id}
-            variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } }}
-          >
-            <Link to={item.media_type === "tv" ? `/tv/${item.id}` : `/movie/${item.id}`}>
-              <MovieCard movie={item} />
-            </Link>
-          </motion.div>
-        ))}
-      </motion.div>
+      {allItems.length === 0 ? (
+        <p className="text-center py-24 text-gray-500">Nothing here yet. Try a different sort or switch type.</p>
+      ) : (
+        <motion.div
+          key={`${type}-${sort}`}
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.03 } } }}
+        >
+          {allItems.map((item: any) => (
+            <motion.div
+              key={item.id}
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } }}
+            >
+              <Link to={`/${type}/${item.id}`}>
+                <MovieCard movie={{ ...item, media_type: type }} />
+              </Link>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
 
       {/* Load More */}
       {hasNextPage && (
         <div className="flex justify-center mt-10">
           <button
             onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage || isFetching}
+            disabled={isFetchingNextPage}
             className="btn-primary disabled:opacity-50"
           >
-            {isFetchingNextPage || isFetching ? (
+            {isFetchingNextPage ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 Loading…

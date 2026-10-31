@@ -7,6 +7,9 @@ import CastCarousel from "../components/CastCarousel"
 import PlayerModal from "../components/PlayerModal"
 import MobilePlayBar from "../components/MobilePlayBar"
 import VideoRow from "../components/VideoRow"
+import MyListButton from "../components/MyListButton"
+import DetailsSection, { CertBadge, StatusPill } from "../components/DetailsSection"
+import { tvCertification, tvDetails, tvStatus, languageName } from "../utils/details"
 import MediaRow from "../components/MediaRow"
 import { pickVideos, relatedItems, youtubeEmbed, type Video } from "../utils/media"
 import NextUpCard from "../components/NextUpCard"
@@ -83,6 +86,22 @@ export default function TVDetails() {
   const videos = pickVideos(tv.videos?.results)
   const trailer = videos.find((v) => v.type === "Trailer") ?? videos[0]
   const related = relatedItems(tv, "tv")
+  // Age rating, status, creators, network
+  const cert = tvCertification(tv)
+  const status = tvStatus(tv.status)
+  const details = tvDetails(tv)
+  const seasonCount: number = tv.number_of_seasons ?? seasons.filter((s) => s.season_number > 0).length
+  const foreignLanguage = tv.original_language && tv.original_language !== "en" ? languageName(tv.original_language) : null
+
+  const listItem = {
+    type: "tv" as const,
+    id: tv.id,
+    title: tv.name,
+    poster_path: tv.poster_path,
+    backdrop_path: tv.backdrop_path,
+    vote_average: tv.vote_average,
+    first_air_date: tv.first_air_date,
+  }
 
   const resumeAt = resumeTime(saved, season, episode)
   const playLabel = resumeAt > 0
@@ -173,19 +192,25 @@ export default function TVDetails() {
                 <Star size={11} fill="currentColor" /> {rating.toFixed(1)}
               </span>
             )}
+            <CertBadge cert={cert} />
             {year && <span className="flex items-center gap-1"><Calendar size={11} className="text-gray-500" /> {year}</span>}
-            {seasons.length > 0 && <span>{seasons.length} Season{seasons.length > 1 ? "s" : ""}</span>}
+            {seasonCount > 0 && <span>{seasonCount} Season{seasonCount > 1 ? "s" : ""}</span>}
+            {foreignLanguage && <span>{foreignLanguage}</span>}
+            <StatusPill status={status} />
           </div>
 
           {tv.overview && (
             <p className="text-sm text-gray-400 line-clamp-3 leading-relaxed">{tv.overview}</p>
           )}
 
-          {trailer && (
-            <button onClick={() => setVideo(trailer)} className="btn-secondary py-2 px-4 text-sm">
-              <Clapperboard size={15} /> Trailer
-            </button>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {trailer && (
+              <button onClick={() => setVideo(trailer)} className="btn-secondary py-2 px-4 text-sm">
+                <Clapperboard size={15} /> Trailer
+              </button>
+            )}
+            <MyListButton item={listItem} className="btn-secondary py-2 px-4 text-sm" iconSize={15} />
+          </div>
         </motion.div>
 
         <MobilePlayBar>
@@ -248,8 +273,11 @@ export default function TVDetails() {
                   <Star size={14} fill="currentColor" /> {rating.toFixed(1)}/10
                 </span>
               )}
+              <CertBadge cert={cert} large />
               {year && <span className="flex items-center gap-1.5"><Calendar size={13} className="text-gray-500" /> {year}</span>}
-              {seasons.length > 0 && <span className="text-gray-400">{seasons.length} Season{seasons.length > 1 ? "s" : ""}</span>}
+              {seasonCount > 0 && <span className="text-gray-400">{seasonCount} Season{seasonCount > 1 ? "s" : ""}</span>}
+              {foreignLanguage && <span className="text-gray-400">{foreignLanguage}</span>}
+              <StatusPill status={status} large />
             </div>
             {tv.overview && (
               <p className="text-sm text-gray-300 max-w-lg line-clamp-3 leading-relaxed">{tv.overview}</p>
@@ -263,6 +291,7 @@ export default function TVDetails() {
                   <Clapperboard size={16} /> Trailer
                 </button>
               )}
+              <MyListButton item={listItem} />
             </div>
           </motion.div>
         </div>
@@ -286,6 +315,12 @@ export default function TVDetails() {
       />
 
       <VideoRow videos={videos} onPlay={setVideo} />
+
+      <DetailsSection
+        rows={details.rows}
+        companies={details.companies}
+        companiesLabel={tv.networks?.length ? "Network" : "Studios"}
+      />
 
       {/* ── Cast ─────────────────────────────────────── */}
       {tv.credits?.cast?.length > 0 && (
