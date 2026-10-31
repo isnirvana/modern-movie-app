@@ -34,6 +34,7 @@
 import HeroCarousel from "../components/HeroCarousel"
 import ContentShelf from "../components/ContentShelf"
 import MediaRow from "../components/MediaRow"
+import ContinueWatching from "../components/ContinueWatching"
 import LoadingSkeleton from "../components/LoadingSkeleton"
 import { useTrending } from "../hooks/useTrending"
 import { useTmdbList } from "../hooks/useTmdbList"
@@ -64,6 +65,7 @@ export default function Home() {
       <HeroCarousel items={items.slice(0, 6)} />
 
       <div className="md:-mt-6 relative z-10">
+        <ContinueWatching />
         <MediaRow title="Now Playing" items={nowPlaying.data ?? []} isLoading={nowPlaying.isLoading} />
         <MediaRow title="Popular Movies" items={popularMovies.data ?? []} isLoading={popularMovies.isLoading} to="/movies" />
         <MediaRow title="Popular TV Shows" items={popularTV.data ?? []} isLoading={popularTV.isLoading} to="/tv" />

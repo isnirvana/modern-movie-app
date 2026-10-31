@@ -1,14 +1,21 @@
 // src/pages/TVDetails.tsx
 import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useParams, useNavigate, useSearchParams } from "react-router-dom"
 import { useTVDetails } from "../hooks/useTVDetails"
 import { useSeasonDetails } from "../hooks/useSeasonDetails"
 import CastCarousel from "../components/CastCarousel"
 import PlayerModal from "../components/PlayerModal"
 import MobilePlayBar from "../components/MobilePlayBar"
-import { tvServers } from "../utils/servers"
-import { motion } from "framer-motion"
-import { Play, Star, Calendar, ChevronLeft, ChevronDown, Tv } from "lucide-react"
+import VideoRow from "../components/VideoRow"
+import MediaRow from "../components/MediaRow"
+import { pickVideos, relatedItems, youtubeEmbed, type Video } from "../utils/media"
+import NextUpCard from "../components/NextUpCard"
+import EpisodeList, { type Episode, type Season } from "../components/EpisodeList"
+import { tvServers, RESUME_SERVER } from "../utils/servers"
+import { getEntry, resumeTime, saveProgress, markUpNext, formatTime } from "../utils/watchHistory"
+import { useHistoryEntry } from "../hooks/useWatchHistory"
+import { motion, AnimatePresence } from "framer-motion"
+import { Play, Star, Calendar, ChevronLeft, Tv, Clapperboard } from "lucide-react"
 
 export default function TVDetails() {
   const { id } = useParams<{ id: string }>()
@@ -16,15 +23,44 @@ export default function TVDetails() {
   const { data: tv, isLoading } = useTVDetails(tvId)
   const navigate = useNavigate()
 
-  const [season, setSeason] = useState(1)
+  // Start on the last episode watched, if any
+  const saved = useHistoryEntry("tv", tvId)
+  const [season, setSeason] = useState(() => getEntry("tv", tvId)?.season ?? 1)
   const { data: seasonData } = useSeasonDetails(tvId, season)
-  const episodes = seasonData?.episodes || []
-  const [episode, setEpisode] = useState(episodes[0]?.episode_number || 1)
+  const episodes: Episode[] = seasonData?.episodes || []
+  const [episode, setEpisode] = useState(() => getEntry("tv", tvId)?.episode ?? 1)
+  // The season shown in the episode list; separate so browsing doesn't move the Play button
+  const [browseSeason, setBrowseSeason] = useState(season)
+  const { data: browseData, isLoading: browseLoading } = useSeasonDetails(tvId, browseSeason)
   const [watching, setWatching] = useState(false)
+  const [startAt, setStartAt] = useState(0)
+  const [showNext, setShowNext] = useState(false)
+  const [video, setVideo] = useState<Video | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
+  // If the chosen episode isn't in the loaded season, fall back to the season's first episode
   useEffect(() => {
-    setEpisode(episodes[0]?.episode_number || 1)
-  }, [season, episodes])
+    if (episodes.length && !episodes.some((ep) => ep.episode_number === episode)) {
+      setEpisode(episodes[0].episode_number)
+    }
+  }, [episodes, episode])
+
+  // Play the selected episode, or a specific one (from an episode card); resumes if it was left part-way
+  const play = (s = season, ep = episode) => {
+    setSeason(s)
+    setEpisode(ep)
+    setStartAt(resumeTime(getEntry("tv", tvId), s, ep))
+    setShowNext(false)
+    setWatching(true)
+  }
+
+  // Opened from Continue Watching (?play=1): go straight into the player
+  useEffect(() => {
+    if (tv && searchParams.get("play")) {
+      play()
+      setSearchParams({}, { replace: true })
+    }
+  }, [tv])
 
   if (isLoading || !tv) {
     return (
@@ -40,45 +76,39 @@ export default function TVDetails() {
   const year = tv.first_air_date ? new Date(tv.first_air_date).getFullYear() : null
   const rating = tv.vote_average ?? 0
   const genres: { id: number; name: string }[] = tv.genres ?? []
-  const seasons = tv.seasons ?? []
+  const seasons: Season[] = tv.seasons ?? []
+  const episodeName = episodes.find((ep) => ep.episode_number === episode)?.name
 
-  const SeasonEpisodePickers = (
-    <div className="flex flex-wrap gap-2">
-      {/* Season */}
-      <div className="relative">
-        <select
-          value={season}
-          onChange={(e) => setSeason(Number(e.target.value))}
-          className="appearance-none pl-3 pr-7 py-2 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
-          style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
-        >
-          {seasons.map((s: { season_number: number; name?: string }) => (
-            <option key={s.season_number} value={s.season_number} className="bg-[#16161f] text-white">
-              {s.name || `Season ${s.season_number}`}
-            </option>
-          ))}
-        </select>
-        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-      </div>
-      {/* Episode */}
-      <div className="relative">
-        <select
-          value={episode}
-          onChange={(e) => setEpisode(Number(e.target.value))}
-          disabled={!seasonData}
-          className="appearance-none pl-3 pr-7 py-2 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer disabled:opacity-40"
-          style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}
-        >
-          {episodes.map((ep: { episode_number: number; name: string }) => (
-            <option key={ep.episode_number} value={ep.episode_number} className="bg-[#16161f] text-white">
-              {ep.episode_number}. {ep.name}
-            </option>
-          ))}
-        </select>
-        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-      </div>
-    </div>
-  )
+  // Trailers & extras, and "More Like This"
+  const videos = pickVideos(tv.videos?.results)
+  const trailer = videos.find((v) => v.type === "Trailer") ?? videos[0]
+  const related = relatedItems(tv, "tv")
+
+  const resumeAt = resumeTime(saved, season, episode)
+  const playLabel = resumeAt > 0
+    ? `Resume S${season} E${episode} · ${formatTime(resumeAt)}`
+    : `Play S${season} E${episode}`
+
+  // Next aired episode: the next one in this season, else episode 1 of the next season
+  const hasAired = (date?: string) => !date || new Date(date) <= new Date()
+  const index = episodes.findIndex((ep) => ep.episode_number === episode)
+  let next: { season: number; episode: number; name?: string; still?: string | null } | null = null
+  if (index >= 0 && index < episodes.length - 1) {
+    const ep = episodes[index + 1]
+    if (hasAired(ep.air_date)) next = { season, episode: ep.episode_number, name: ep.name, still: ep.still_path }
+  } else if (index === episodes.length - 1) {
+    const nextSeason = seasons.find((s) => s.season_number === season + 1)
+    if (nextSeason && nextSeason.air_date && hasAired(nextSeason.air_date)) next = { season: season + 1, episode: 1 }
+  }
+
+  const playNext = () => {
+    if (!next) return
+    setShowNext(false)
+    setStartAt(0)
+    setSeason(next.season)
+    setEpisode(next.episode)
+    setBrowseSeason(next.season)
+  }
 
   return (
     // Bottom padding on phones keeps the pinned play bar from covering the cast row
@@ -151,13 +181,16 @@ export default function TVDetails() {
             <p className="text-sm text-gray-400 line-clamp-3 leading-relaxed">{tv.overview}</p>
           )}
 
-          {/* Pickers */}
-          {SeasonEpisodePickers}
+          {trailer && (
+            <button onClick={() => setVideo(trailer)} className="btn-secondary py-2 px-4 text-sm">
+              <Clapperboard size={15} /> Trailer
+            </button>
+          )}
         </motion.div>
 
         <MobilePlayBar>
-          <button onClick={() => setWatching(true)} className="btn-primary w-full justify-center py-3.5 text-base">
-            <Play size={16} fill="white" /> Play S{season} E{episode}
+          <button onClick={() => play()} className="btn-primary w-full justify-center py-3.5 text-base">
+            <Play size={16} fill="white" /> {playLabel}
           </button>
         </MobilePlayBar>
       </div>
@@ -221,15 +254,38 @@ export default function TVDetails() {
             {tv.overview && (
               <p className="text-sm text-gray-300 max-w-lg line-clamp-3 leading-relaxed">{tv.overview}</p>
             )}
-            {SeasonEpisodePickers}
-            <div className="pt-1">
-              <button onClick={() => setWatching(true)} className="btn-primary">
-                <Play size={16} fill="white" /> Play S{season} E{episode}
+            <div className="flex items-center gap-3 pt-1">
+              <button onClick={() => play()} className="btn-primary">
+                <Play size={16} fill="white" /> {playLabel}
               </button>
+              {trailer && (
+                <button onClick={() => setVideo(trailer)} className="btn-secondary">
+                  <Clapperboard size={16} /> Trailer
+                </button>
+              )}
             </div>
           </motion.div>
         </div>
       </div>
+
+      {/* ── Episodes ─────────────────────────────────── */}
+      <EpisodeList
+        seasons={seasons}
+        activeSeason={browseSeason}
+        onSeasonChange={setBrowseSeason}
+        episodes={(browseData?.episodes as Episode[]) ?? []}
+        loading={browseLoading}
+        current={{ season, episode }}
+        progress={
+          saved?.season != null && saved.episode != null && saved.duration > 0
+            ? { season: saved.season, episode: saved.episode, percent: Math.min(100, (saved.time / saved.duration) * 100) }
+            : undefined
+        }
+        fallbackImage={tv.backdrop_path}
+        onPlay={(ep) => play(browseSeason, ep)}
+      />
+
+      <VideoRow videos={videos} onPlay={setVideo} />
 
       {/* ── Cast ─────────────────────────────────────── */}
       {tv.credits?.cast?.length > 0 && (
@@ -242,13 +298,58 @@ export default function TVDetails() {
         </section>
       )}
 
+      {/* ── More Like This ───────────────────────────── */}
+      <MediaRow title="More Like This" items={related} />
+
       <PlayerModal
         open={watching}
-        onClose={() => setWatching(false)}
-        servers={tvServers(tvId, season, episode, tv.external_ids?.imdb_id ?? tv.imdb_id)}
+        onClose={() => { setWatching(false); setShowNext(false) }}
+        servers={tvServers(tvId, season, episode, tv.external_ids?.imdb_id ?? tv.imdb_id, startAt)}
+        // Cinezo can't start mid-way, so resumes open on a server that takes a start time
+        initialServer={startAt > 0 ? RESUME_SERVER : undefined}
+        onPlayerEvent={(e) => {
+          saveProgress({
+            type: "tv",
+            id: tvId,
+            title: tv.name,
+            poster: tv.poster_path,
+            backdrop: tv.backdrop_path,
+            season,
+            episode,
+            time: e.currentTime,
+            duration: e.duration,
+          })
+          if (e.event === "ended" && next) {
+            markUpNext({ type: "tv", id: tvId, title: tv.name, poster: tv.poster_path, backdrop: tv.backdrop_path, season: next.season, episode: next.episode })
+            setShowNext(true)
+          }
+        }}
+        overlay={
+          <AnimatePresence>
+            {showNext && next && (
+              <NextUpCard
+                key={`${next.season}-${next.episode}`}
+                label={`S${next.season} E${next.episode}`}
+                name={next.name}
+                stillPath={next.still}
+                onPlay={playNext}
+                onCancel={() => setShowNext(false)}
+              />
+            )}
+          </AnimatePresence>
+        }
         title={tv.name}
-        subtitle={`Season ${season} · Episode ${episode}`}
+        subtitle={`Season ${season} · Episode ${episode}${episodeName ? ` · ${episodeName}` : ""}`}
         posterPath={tv.poster_path}
+      />
+
+      {/* Trailer popup (reuses the player shell; one source, so no server switcher) */}
+      <PlayerModal
+        open={!!video}
+        onClose={() => setVideo(null)}
+        servers={video ? [{ name: "YouTube", src: youtubeEmbed(video.key) }] : []}
+        title={tv.name}
+        subtitle={video?.name}
       />
     </div>
   )

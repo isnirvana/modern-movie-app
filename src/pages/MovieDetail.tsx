@@ -1,13 +1,18 @@
 // src/pages/MovieDetail.tsx
-import { useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useParams, useNavigate, useSearchParams } from "react-router-dom"
 import { useMovieDetails } from "../hooks/useMovieDetails"
 import CastCarousel from "../components/CastCarousel"
 import PlayerModal from "../components/PlayerModal"
 import MobilePlayBar from "../components/MobilePlayBar"
-import { movieServers } from "../utils/servers"
+import VideoRow from "../components/VideoRow"
+import MediaRow from "../components/MediaRow"
+import { pickVideos, relatedItems, youtubeEmbed, type Video } from "../utils/media"
+import { movieServers, RESUME_SERVER } from "../utils/servers"
+import { getEntry, resumeTime, saveProgress, formatTime } from "../utils/watchHistory"
+import { useHistoryEntry } from "../hooks/useWatchHistory"
 import { motion } from "framer-motion"
-import { Play, Star, Clock, Calendar, ChevronLeft } from "lucide-react"
+import { Play, Star, Clock, Calendar, ChevronLeft, Clapperboard } from "lucide-react"
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>()
@@ -15,6 +20,26 @@ export default function MovieDetail() {
   const { data: m, isLoading } = useMovieDetails(movieId)
   const [watching, setWatching] = useState(false)
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Saved progress → "Resume" button and the player's start time
+  const saved = useHistoryEntry("movie", movieId)
+  const resumeAt = resumeTime(saved)
+  const [startAt, setStartAt] = useState(0)
+  const [video, setVideo] = useState<Video | null>(null)
+
+  const play = () => {
+    setStartAt(resumeTime(getEntry("movie", movieId)))
+    setWatching(true)
+  }
+
+  // Opened from Continue Watching (?play=1): go straight into the player
+  useEffect(() => {
+    if (m && searchParams.get("play")) {
+      play()
+      setSearchParams({}, { replace: true })
+    }
+  }, [m])
 
   if (isLoading || !m) {
     return (
@@ -30,6 +55,12 @@ export default function MovieDetail() {
   const year = m.release_date ? new Date(m.release_date).getFullYear() : null
   const rating = m.vote_average ?? 0
   const genres: { id: number; name: string }[] = m.genres ?? []
+  const playLabel = resumeAt > 0 ? `Resume · ${formatTime(resumeAt)}` : "Watch Now"
+
+  // Trailers & extras, and "More Like This"
+  const videos = pickVideos(m.videos?.results)
+  const trailer = videos.find((v) => v.type === "Trailer") ?? videos[0]
+  const related = relatedItems(m, "movie")
 
   return (
     // Bottom padding on phones keeps the pinned play bar from covering the cast row
@@ -98,11 +129,17 @@ export default function MovieDetail() {
             <p className="text-sm text-gray-400 line-clamp-4 leading-relaxed">{m.overview}</p>
           )}
 
+          {trailer && (
+            <button onClick={() => setVideo(trailer)} className="btn-secondary py-2 px-4 text-sm">
+              <Clapperboard size={15} /> Trailer
+            </button>
+          )}
+
         </motion.div>
 
         <MobilePlayBar>
-          <button onClick={() => setWatching(true)} className="btn-primary w-full justify-center py-3.5 text-base">
-            <Play size={16} fill="white" /> Watch Now
+          <button onClick={play} className="btn-primary w-full justify-center py-3.5 text-base">
+            <Play size={16} fill="white" /> {playLabel}
           </button>
         </MobilePlayBar>
       </div>
@@ -166,13 +203,20 @@ export default function MovieDetail() {
               <p className="text-sm text-gray-300 max-w-lg line-clamp-4 leading-relaxed">{m.overview}</p>
             )}
             <div className="flex items-center gap-3 pt-2">
-              <button onClick={() => setWatching(true)} className="btn-primary">
-                <Play size={16} fill="white" /> Watch Now
+              <button onClick={play} className="btn-primary">
+                <Play size={16} fill="white" /> {playLabel}
               </button>
+              {trailer && (
+                <button onClick={() => setVideo(trailer)} className="btn-secondary">
+                  <Clapperboard size={16} /> Trailer
+                </button>
+              )}
             </div>
           </motion.div>
         </div>
       </div>
+
+      <VideoRow videos={videos} onPlay={setVideo} />
 
       {m.credits?.cast?.length > 0 && (
         <section className="px-5 md:px-16 py-8">
@@ -184,13 +228,38 @@ export default function MovieDetail() {
         </section>
       )}
 
+      {/* ── More Like This ───────────────────────────── */}
+      <MediaRow title="More Like This" items={related} />
+
       <PlayerModal
         open={watching}
         onClose={() => setWatching(false)}
-        servers={movieServers(movieId, m.imdb_id)}
+        servers={movieServers(movieId, m.imdb_id, startAt)}
+        // Cinezo can't start mid-way, so resumes open on a server that takes a start time
+        initialServer={startAt > 0 ? RESUME_SERVER : undefined}
+        onPlayerEvent={(e) =>
+          saveProgress({
+            type: "movie",
+            id: movieId,
+            title: m.title,
+            poster: m.poster_path,
+            backdrop: m.backdrop_path,
+            time: e.currentTime,
+            duration: e.duration,
+          })
+        }
         title={m.title}
         subtitle={[year, m.runtime ? `${m.runtime} min` : null].filter(Boolean).join(" · ") || undefined}
         posterPath={m.poster_path}
+      />
+
+      {/* Trailer popup (reuses the player shell; one source, so no server switcher) */}
+      <PlayerModal
+        open={!!video}
+        onClose={() => setVideo(null)}
+        servers={video ? [{ name: "YouTube", src: youtubeEmbed(video.key) }] : []}
+        title={m.title}
+        subtitle={video?.name}
       />
     </div>
   )

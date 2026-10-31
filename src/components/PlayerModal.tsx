@@ -1,8 +1,8 @@
 // src/components/PlayerModal.tsx
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Server as ServerIcon } from "lucide-react"
-import type { Server } from "../utils/servers"
+import type { Server, PlayerEvent } from "../utils/servers"
 
 type Props = {
   open: boolean
@@ -11,19 +11,30 @@ type Props = {
   title: string
   subtitle?: string
   posterPath?: string | null
+  // Progress events from servers that send them (Cinezo, CineSrc)
+  onPlayerEvent?: (e: PlayerEvent) => void
+  // Shown on top of the video, e.g. the Up Next card
+  overlay?: ReactNode
+  // Server to open on instead of the default (by name), e.g. one that can resume
+  initialServer?: string
 }
+
+// Some servers send time updates several times a second; pass them on at most this often
+const TIMEUPDATE_EVERY_MS = 5000
 
 const isDesktop = () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
 
-export default function PlayerModal({ open, onClose, servers, title, subtitle, posterPath }: Props) {
+export default function PlayerModal({ open, onClose, servers, title, subtitle, posterPath, onPlayerEvent, overlay, initialServer }: Props) {
   const [loaded, setLoaded] = useState(false)
   const [serverIndex, setServerIndex] = useState(0)
   const server = servers[Math.min(serverIndex, servers.length - 1)]
   const src = server?.src ?? ""
 
-  // Every time the player opens, start on the default server
+  // Every time the player opens, start on the default server (or the requested one)
   useEffect(() => {
-    if (open) setServerIndex(0)
+    if (!open) return
+    const requested = initialServer ? servers.findIndex((s) => s.name === initialServer) : -1
+    setServerIndex(requested >= 0 ? requested : 0)
   }, [open])
 
   // Lock page scroll + close on Escape while open
@@ -40,6 +51,39 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
       window.removeEventListener("keydown", onKey)
     }
   }, [open, onClose])
+
+  // Forward the active server's progress messages. A ref keeps the listener stable while the parent re-renders.
+  const onPlayerEventRef = useRef(onPlayerEvent)
+  onPlayerEventRef.current = onPlayerEvent
+  const events = server?.events
+
+  useEffect(() => {
+    if (!open || !events) return
+    let lastDuration = NaN
+    let lastSent = 0
+    const onMessage = (e: MessageEvent) => {
+      // Only trust messages from the server that's playing
+      if (e.origin !== events.origin) return
+      const ev = events.parse(e.data)
+      if (!ev) return
+
+      let { currentTime, duration } = ev
+      if (Number.isFinite(duration) && duration > 0) lastDuration = duration
+      else duration = lastDuration
+      // "ended" may come without times — it means the end
+      if (ev.event === "ended" && !Number.isFinite(currentTime)) currentTime = duration
+      if (!Number.isFinite(currentTime) || !Number.isFinite(duration)) return
+
+      if (ev.event === "timeupdate") {
+        const now = Date.now()
+        if (now - lastSent < TIMEUPDATE_EVERY_MS) return
+        lastSent = now
+      }
+      onPlayerEventRef.current?.({ event: ev.event, currentTime, duration })
+    }
+    window.addEventListener("message", onMessage)
+    return () => window.removeEventListener("message", onMessage)
+  }, [open, events])
 
   // Show the spinner again whenever the source changes (e.g. new episode)
   useEffect(() => setLoaded(false), [src])
@@ -162,6 +206,7 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
                 className="absolute inset-0 w-full h-full"
                 style={{ border: "none" }}
               />
+              {overlay}
             </div>
           </motion.div>
         </motion.div>

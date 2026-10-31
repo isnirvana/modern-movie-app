@@ -32,12 +32,12 @@ export const fetchByGenre = (genreId: number, sortBy: string, page: number) =>
 // Fetch movie details + credits
 export const fetchMovieDetails = (id: number) =>
   api
-    .get(`/movie/${id}`, { params: { append_to_response: "credits" } })
+    .get(`/movie/${id}`, { params: { append_to_response: "credits,videos,recommendations,similar" } })
     .then((res) => res.data)
 
 export const fetchTVDetails = (id: number) =>
   api
-    .get(`/tv/${id}`, { params: { append_to_response: "credits,external_ids" } })
+    .get(`/tv/${id}`, { params: { append_to_response: "credits,external_ids,videos,recommendations,similar" } })
     .then((res) => res.data)
 
 // Fetch one page of any TMDB list endpoint, tagging each item with its media type
