@@ -31,7 +31,7 @@ export type Server = {
 // The server Resume opens on: it accepts a start time (Cinezo can't start mid-way)
 export const RESUME_SERVER = "Nova"
 
-// primeflix servers that play directly. Luna and Orion need a proxy (their hosts refuse other sites), so not yet.
+// primeflix servers that play directly. Luna and Orion's hosts refuse other sites; they play in primeflix's own player instead.
 const STREAM_SERVERS = ["Nova"]
 
 const streamServers = (path: string, startAt: number): Server[] =>
@@ -80,6 +80,7 @@ export function movieServers(tmdbId: number, imdbId?: string | null, startAt = 0
     { name: "Cinezo", src: `https://player.cinezo.live/embed/movie/${tmdbId}${CINEZO_PARAMS}`, sandbox: true, events: CINEZO_EVENTS },
     { name: "CineSrc", src: `https://cinesrc.st/embed/movie/${tmdbId}?${cinesrcParams(startAt)}`, sandbox: true, events: CINESRC_EVENTS },
   ]
+  servers.push({ name: "Primeflix", src: `https://primeflix.ru/player/movie/${tmdbId}`, sandbox: true })
   if (imdbId) servers.push({ name: "CDNM", src: `https://share.cdnm.ink/embed/imdb/${imdbId}`, sandbox: true })
   return servers
 }
@@ -101,6 +102,7 @@ export function tvServers(tmdbId: number, season: number, episode: number, imdbI
       events: CINESRC_EVENTS,
     },
   ]
+  servers.push({ name: "Primeflix", src: `https://primeflix.ru/player/tv/${tmdbId}/${season}/${episode}`, sandbox: true })
   if (imdbId) servers.push({ name: "VidFast", src: `https://vidfast.vc/tv/${imdbId}/${season}/${episode}?nextButton=false`, sandbox: true })
   return servers
 }
