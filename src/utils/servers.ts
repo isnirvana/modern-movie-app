@@ -1,6 +1,8 @@
 // src/utils/servers.ts
 // Streaming servers, in the order they appear in the player. The first one is the default.
 
+import { PRIMEFLIX_API, SUBTITLES_API } from "./primeflix"
+
 export type PlayerEvent = {
   event: "play" | "pause" | "timeupdate" | "seeked" | "ended"
   currentTime: number // NaN when the server didn't say
@@ -9,6 +11,7 @@ export type PlayerEvent = {
 
 export type Server = {
   name: string
+  // Embed page URL, or for a `stream` server the API its stream is looked up from
   src: string
   // Blocks pop-ups and redirects; set to false for a server that refuses to play sandboxed
   sandbox?: boolean
@@ -18,10 +21,25 @@ export type Server = {
     // Turns one of the server's messages into a PlayerEvent, or null to ignore it
     parse: (data: any) => PlayerEvent | null
   }
+  // Played in our own player instead of an iframe; `name` is the server's key in the API's response
+  stream?: {
+    subtitles: string
+    startAt: number
+  }
 }
 
 // The server Resume opens on: it accepts a start time (Cinezo can't start mid-way)
-export const RESUME_SERVER = "CineSrc"
+export const RESUME_SERVER = "Nova"
+
+// primeflix servers that play directly. Luna and Orion need a proxy (their hosts refuse other sites), so not yet.
+const STREAM_SERVERS = ["Nova"]
+
+const streamServers = (path: string, startAt: number): Server[] =>
+  STREAM_SERVERS.map((name) => ({
+    name,
+    src: `${PRIMEFLIX_API}${path}`,
+    stream: { subtitles: `${SUBTITLES_API}${path}`, startAt },
+  }))
 
 // Cinezo: { type: "PLAYER_EVENT", data: { event, currentTime, duration, … } }
 // (its docs call it WATCH_PROGRESS with `eventType`, so accept that too)
@@ -58,6 +76,7 @@ const cinesrcParams = (startAt = 0) =>
 
 export function movieServers(tmdbId: number, imdbId?: string | null, startAt = 0): Server[] {
   const servers: Server[] = [
+    ...streamServers(`/movie/${tmdbId}`, startAt),
     { name: "Cinezo", src: `https://player.cinezo.live/embed/movie/${tmdbId}${CINEZO_PARAMS}`, sandbox: true, events: CINEZO_EVENTS },
     { name: "CineSrc", src: `https://cinesrc.st/embed/movie/${tmdbId}?${cinesrcParams(startAt)}`, sandbox: true, events: CINESRC_EVENTS },
   ]
@@ -67,6 +86,7 @@ export function movieServers(tmdbId: number, imdbId?: string | null, startAt = 0
 
 export function tvServers(tmdbId: number, season: number, episode: number, imdbId?: string | null, startAt = 0): Server[] {
   const servers: Server[] = [
+    ...streamServers(`/tv/${tmdbId}/${season}/${episode}`, startAt),
     {
       name: "Cinezo",
       src: `https://player.cinezo.live/embed/tv/${tmdbId}/${season}/${episode}${CINEZO_PARAMS}`,

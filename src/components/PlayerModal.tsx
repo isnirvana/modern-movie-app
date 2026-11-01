@@ -1,8 +1,10 @@
 // src/components/PlayerModal.tsx
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Server as ServerIcon } from "lucide-react"
 import type { Server, PlayerEvent } from "../utils/servers"
+
+const StreamPlayer = lazy(() => import("./StreamPlayer"))
 
 type Props = {
   open: boolean
@@ -11,7 +13,7 @@ type Props = {
   title: string
   subtitle?: string
   posterPath?: string | null
-  // Progress events from servers that send them (Cinezo, CineSrc)
+  // Progress events from servers that send them (Nova, Cinezo, CineSrc)
   onPlayerEvent?: (e: PlayerEvent) => void
   // Shown on top of the video, e.g. the Up Next card
   overlay?: ReactNode
@@ -52,41 +54,49 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
     }
   }, [open, onClose])
 
-  // Forward the active server's progress messages. A ref keeps the listener stable while the parent re-renders.
+  // Pass the active server's progress on to the parent. Refs keep this stable while the parent re-renders.
   const onPlayerEventRef = useRef(onPlayerEvent)
   onPlayerEventRef.current = onPlayerEvent
+  const lastDuration = useRef(NaN)
+  const lastSent = useRef(0)
+
+  const report = useCallback((ev: PlayerEvent) => {
+    let { currentTime, duration } = ev
+    if (Number.isFinite(duration) && duration > 0) lastDuration.current = duration
+    else duration = lastDuration.current
+    // "ended" may come without times — it means the end
+    if (ev.event === "ended" && !Number.isFinite(currentTime)) currentTime = duration
+    if (!Number.isFinite(currentTime) || !Number.isFinite(duration)) return
+
+    if (ev.event === "timeupdate") {
+      const now = Date.now()
+      if (now - lastSent.current < TIMEUPDATE_EVERY_MS) return
+      lastSent.current = now
+    }
+    onPlayerEventRef.current?.({ event: ev.event, currentTime, duration })
+  }, [])
+
+  // Iframe servers send their progress as messages
   const events = server?.events
 
   useEffect(() => {
     if (!open || !events) return
-    let lastDuration = NaN
-    let lastSent = 0
     const onMessage = (e: MessageEvent) => {
       // Only trust messages from the server that's playing
       if (e.origin !== events.origin) return
       const ev = events.parse(e.data)
-      if (!ev) return
-
-      let { currentTime, duration } = ev
-      if (Number.isFinite(duration) && duration > 0) lastDuration = duration
-      else duration = lastDuration
-      // "ended" may come without times — it means the end
-      if (ev.event === "ended" && !Number.isFinite(currentTime)) currentTime = duration
-      if (!Number.isFinite(currentTime) || !Number.isFinite(duration)) return
-
-      if (ev.event === "timeupdate") {
-        const now = Date.now()
-        if (now - lastSent < TIMEUPDATE_EVERY_MS) return
-        lastSent = now
-      }
-      onPlayerEventRef.current?.({ event: ev.event, currentTime, duration })
+      if (ev) report(ev)
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [open, events])
+  }, [open, events, report])
 
-  // Show the spinner again whenever the source changes (e.g. new episode)
-  useEffect(() => setLoaded(false), [src])
+  // Whenever the source changes (e.g. new episode): show the spinner again and start progress afresh
+  useEffect(() => {
+    setLoaded(false)
+    lastDuration.current = NaN
+    lastSent.current = 0
+  }, [src, server?.name])
 
   const desktop = isDesktop()
 
@@ -195,17 +205,32 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
                   <div className="w-10 h-10 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
                 </div>
               )}
-              <iframe
-                key={src}
-                src={src}
-                title={title}
-                onLoad={() => setLoaded(true)}
-                allowFullScreen
-                allow="autoplay; fullscreen"
-                sandbox={server?.sandbox ? "allow-scripts allow-same-origin allow-presentation" : undefined}
-                className="absolute inset-0 w-full h-full"
-                style={{ border: "none" }}
-              />
+              {server?.stream ? (
+                <Suspense fallback={null}>
+                  <StreamPlayer
+                    key={`${server.name}:${src}`}
+                    server={server.name}
+                    api={src}
+                    subtitlesApi={server.stream.subtitles}
+                    startAt={server.stream.startAt}
+                    title={title}
+                    onLoad={() => setLoaded(true)}
+                    onEvent={report}
+                  />
+                </Suspense>
+              ) : (
+                <iframe
+                  key={src}
+                  src={src}
+                  title={title}
+                  onLoad={() => setLoaded(true)}
+                  allowFullScreen
+                  allow="autoplay; fullscreen"
+                  sandbox={server?.sandbox ? "allow-scripts allow-same-origin allow-presentation" : undefined}
+                  className="absolute inset-0 w-full h-full"
+                  style={{ border: "none" }}
+                />
+              )}
               {overlay}
             </div>
           </motion.div>
