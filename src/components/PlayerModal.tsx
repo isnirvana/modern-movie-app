@@ -1,8 +1,11 @@
 // src/components/PlayerModal.tsx
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Server as ServerIcon } from "lucide-react"
 import type { Server, PlayerEvent } from "../utils/servers"
+import { fetchAvailableServers } from "../utils/primeflix"
+
+const StreamPlayer = lazy(() => import("./StreamPlayer"))
 
 type Props = {
   open: boolean
@@ -11,7 +14,9 @@ type Props = {
   title: string
   subtitle?: string
   posterPath?: string | null
-  // Progress events from servers that send them (Cinezo, CineSrc)
+  // Shown behind our own player while it loads
+  backdropPath?: string | null
+  // Progress events from servers that send them (Nova, Cinezo, CineSrc)
   onPlayerEvent?: (e: PlayerEvent) => void
   // Shown on top of the video, e.g. the Up Next card
   overlay?: ReactNode
@@ -24,17 +29,35 @@ const TIMEUPDATE_EVERY_MS = 5000
 
 const isDesktop = () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
 
-export default function PlayerModal({ open, onClose, servers, title, subtitle, posterPath, onPlayerEvent, overlay, initialServer }: Props) {
+export default function PlayerModal({ open, onClose, servers, title, subtitle, posterPath, backdropPath, onPlayerEvent, overlay, initialServer }: Props) {
   const [loaded, setLoaded] = useState(false)
-  const [serverIndex, setServerIndex] = useState(0)
-  const server = servers[Math.min(serverIndex, servers.length - 1)]
+  // The server the viewer picked; null means `initialServer`, or else the default (the first, Cinezo)
+  const [serverName, setServerName] = useState<string | null>(null)
+
+  // `stream` servers only show for titles they have, so look that up first (they all share one API)
+  const streamApi = servers.find((s) => s.stream)?.src
+  const [lookup, setLookup] = useState<{ api: string; names: Set<string> } | null>(null)
+  const available = lookup && lookup.api === streamApi ? lookup.names : null
+
+  useEffect(() => {
+    if (!open || !streamApi) return
+    const ctrl = new AbortController()
+    fetchAvailableServers(streamApi, ctrl.signal)
+      .catch(() => new Set<string>())
+      .then((names) => !ctrl.signal.aborted && setLookup({ api: streamApi, names }))
+    return () => ctrl.abort()
+  }, [open, streamApi])
+
+  const visible = servers.filter((s) => !s.stream || available?.has(s.name))
+  // While a new episode's lookup runs, stay on a picked stream server instead of briefly loading another one
+  const wanted = serverName ?? initialServer
+  const waiting = !!wanted && !available && !!servers.find((s) => s.name === wanted)?.stream
+  const server = waiting ? undefined : visible.find((s) => s.name === wanted) ?? visible[0]
   const src = server?.src ?? ""
 
   // Every time the player opens, start on the default server (or the requested one)
   useEffect(() => {
-    if (!open) return
-    const requested = initialServer ? servers.findIndex((s) => s.name === initialServer) : -1
-    setServerIndex(requested >= 0 ? requested : 0)
+    if (open) setServerName(null)
   }, [open])
 
   // Lock page scroll + close on Escape while open
@@ -52,41 +75,49 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
     }
   }, [open, onClose])
 
-  // Forward the active server's progress messages. A ref keeps the listener stable while the parent re-renders.
+  // Pass the active server's progress on to the parent. Refs keep this stable while the parent re-renders.
   const onPlayerEventRef = useRef(onPlayerEvent)
   onPlayerEventRef.current = onPlayerEvent
+  const lastDuration = useRef(NaN)
+  const lastSent = useRef(0)
+
+  const report = useCallback((ev: PlayerEvent) => {
+    let { currentTime, duration } = ev
+    if (Number.isFinite(duration) && duration > 0) lastDuration.current = duration
+    else duration = lastDuration.current
+    // "ended" may come without times — it means the end
+    if (ev.event === "ended" && !Number.isFinite(currentTime)) currentTime = duration
+    if (!Number.isFinite(currentTime) || !Number.isFinite(duration)) return
+
+    if (ev.event === "timeupdate") {
+      const now = Date.now()
+      if (now - lastSent.current < TIMEUPDATE_EVERY_MS) return
+      lastSent.current = now
+    }
+    onPlayerEventRef.current?.({ event: ev.event, currentTime, duration })
+  }, [])
+
+  // Iframe servers send their progress as messages
   const events = server?.events
 
   useEffect(() => {
     if (!open || !events) return
-    let lastDuration = NaN
-    let lastSent = 0
     const onMessage = (e: MessageEvent) => {
       // Only trust messages from the server that's playing
       if (e.origin !== events.origin) return
       const ev = events.parse(e.data)
-      if (!ev) return
-
-      let { currentTime, duration } = ev
-      if (Number.isFinite(duration) && duration > 0) lastDuration = duration
-      else duration = lastDuration
-      // "ended" may come without times — it means the end
-      if (ev.event === "ended" && !Number.isFinite(currentTime)) currentTime = duration
-      if (!Number.isFinite(currentTime) || !Number.isFinite(duration)) return
-
-      if (ev.event === "timeupdate") {
-        const now = Date.now()
-        if (now - lastSent < TIMEUPDATE_EVERY_MS) return
-        lastSent = now
-      }
-      onPlayerEventRef.current?.({ event: ev.event, currentTime, duration })
+      if (ev) report(ev)
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [open, events])
+  }, [open, events, report])
 
-  // Show the spinner again whenever the source changes (e.g. new episode)
-  useEffect(() => setLoaded(false), [src])
+  // Whenever the source changes (e.g. new episode): show the spinner again and start progress afresh
+  useEffect(() => {
+    setLoaded(false)
+    lastDuration.current = NaN
+    lastSent.current = 0
+  }, [src, server?.name])
 
   const desktop = isDesktop()
 
@@ -156,19 +187,19 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
             </div>
 
             {/* Server switcher — under the video on phones (thumb reach), under the header on desktop */}
-            {servers.length > 1 && (
+            {visible.length > 1 && (
               <div
                 className="order-last md:order-none flex-shrink-0 flex items-center gap-2 px-4 py-3 md:py-2 md:px-5 overflow-x-auto border-t md:border-t-0 md:border-b border-white/[0.06]"
               >
                 <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-gray-500 font-semibold flex-shrink-0">
                   <ServerIcon size={12} /> Server
                 </span>
-                {servers.map((s, i) => {
+                {visible.map((s, i) => {
                   const active = s === server
                   return (
                     <button
                       key={s.name}
-                      onClick={() => setServerIndex(i)}
+                      onClick={() => setServerName(s.name)}
                       aria-pressed={active}
                       className={`flex-shrink-0 px-4 py-2 md:px-3 md:py-1 text-sm md:text-xs rounded-full font-medium transition-colors ${
                         active ? "bg-primary text-white" : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white"
@@ -195,17 +226,35 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
                   <div className="w-10 h-10 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
                 </div>
               )}
-              <iframe
-                key={src}
-                src={src}
-                title={title}
-                onLoad={() => setLoaded(true)}
-                allowFullScreen
-                allow="autoplay; fullscreen"
-                sandbox={server?.sandbox ? "allow-scripts allow-same-origin allow-presentation" : undefined}
-                className="absolute inset-0 w-full h-full"
-                style={{ border: "none" }}
-              />
+              {!server ? null : server.stream ? (
+                <Suspense fallback={null}>
+                  <StreamPlayer
+                    key={`${server.name}:${src}`}
+                    server={server.name}
+                    api={src}
+                    subtitlesApi={server.stream.subtitles}
+                    startAt={server.stream.startAt}
+                    title={title}
+                    subtitle={subtitle}
+                    backdropPath={backdropPath}
+                    fallback={visible[0] !== server ? { name: visible[0].name, onSelect: () => setServerName(visible[0].name) } : undefined}
+                    onLoad={() => setLoaded(true)}
+                    onEvent={report}
+                  />
+                </Suspense>
+              ) : (
+                <iframe
+                  key={src}
+                  src={src}
+                  title={title}
+                  onLoad={() => setLoaded(true)}
+                  allowFullScreen
+                  allow="autoplay; fullscreen"
+                  sandbox={server.sandbox ? "allow-scripts allow-same-origin allow-presentation" : undefined}
+                  className="absolute inset-0 w-full h-full"
+                  style={{ border: "none" }}
+                />
+              )}
               {overlay}
             </div>
           </motion.div>

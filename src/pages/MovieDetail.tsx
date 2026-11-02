@@ -280,6 +280,7 @@ export default function MovieDetail() {
         title={m.title}
         subtitle={[year, runtime].filter(Boolean).join(" · ") || undefined}
         posterPath={m.poster_path}
+        backdropPath={m.backdrop_path}
       />
 
       {/* Trailer popup (reuses the player shell; one source, so no server switcher) */}
