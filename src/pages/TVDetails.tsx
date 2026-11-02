@@ -376,6 +376,7 @@ export default function TVDetails() {
         title={tv.name}
         subtitle={`Season ${season} · Episode ${episode}${episodeName ? ` · ${episodeName}` : ""}`}
         posterPath={tv.poster_path}
+        backdropPath={tv.backdrop_path}
       />
 
       {/* Trailer popup (reuses the player shell; one source, so no server switcher) */}

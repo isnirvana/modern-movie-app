@@ -1,5 +1,6 @@
 // src/utils/servers.ts
 // Streaming servers, in the order they appear in the player. The first one is the default.
+// Cinezo leads because it reports progress reliably; `stream` servers only show up for titles they have.
 
 import { PRIMEFLIX_API, SUBTITLES_API } from "./primeflix"
 
@@ -29,9 +30,9 @@ export type Server = {
 }
 
 // The server Resume opens on: it accepts a start time (Cinezo can't start mid-way)
-export const RESUME_SERVER = "Nova"
+export const RESUME_SERVER = "CineSrc"
 
-// primeflix servers that play directly. Luna and Orion's hosts refuse other sites; they play in primeflix's own player instead.
+// primeflix servers that play directly. Luna and Orion's hosts refuse other sites; they play in primeflix's own player instead (our "Luna" server).
 const STREAM_SERVERS = ["Nova"]
 
 const streamServers = (path: string, startAt: number): Server[] =>
@@ -76,18 +77,17 @@ const cinesrcParams = (startAt = 0) =>
 
 export function movieServers(tmdbId: number, imdbId?: string | null, startAt = 0): Server[] {
   const servers: Server[] = [
-    ...streamServers(`/movie/${tmdbId}`, startAt),
     { name: "Cinezo", src: `https://player.cinezo.live/embed/movie/${tmdbId}${CINEZO_PARAMS}`, sandbox: true, events: CINEZO_EVENTS },
     { name: "CineSrc", src: `https://cinesrc.st/embed/movie/${tmdbId}?${cinesrcParams(startAt)}`, sandbox: true, events: CINESRC_EVENTS },
+    ...streamServers(`/movie/${tmdbId}`, startAt),
   ]
-  servers.push({ name: "Primeflix", src: `https://primeflix.ru/player/movie/${tmdbId}`, sandbox: true })
+  servers.push({ name: "Luna", src: `https://primeflix.ru/player/movie/${tmdbId}`, sandbox: true })
   if (imdbId) servers.push({ name: "CDNM", src: `https://share.cdnm.ink/embed/imdb/${imdbId}`, sandbox: true })
   return servers
 }
 
 export function tvServers(tmdbId: number, season: number, episode: number, imdbId?: string | null, startAt = 0): Server[] {
   const servers: Server[] = [
-    ...streamServers(`/tv/${tmdbId}/${season}/${episode}`, startAt),
     {
       name: "Cinezo",
       src: `https://player.cinezo.live/embed/tv/${tmdbId}/${season}/${episode}${CINEZO_PARAMS}`,
@@ -101,8 +101,9 @@ export function tvServers(tmdbId: number, season: number, episode: number, imdbI
       sandbox: true,
       events: CINESRC_EVENTS,
     },
+    ...streamServers(`/tv/${tmdbId}/${season}/${episode}`, startAt),
   ]
-  servers.push({ name: "Primeflix", src: `https://primeflix.ru/player/tv/${tmdbId}/${season}/${episode}`, sandbox: true })
+  servers.push({ name: "Luna", src: `https://primeflix.ru/player/tv/${tmdbId}/${season}/${episode}`, sandbox: true })
   if (imdbId) servers.push({ name: "VidFast", src: `https://vidfast.vc/tv/${imdbId}/${season}/${episode}?nextButton=false`, sandbox: true })
   return servers
 }

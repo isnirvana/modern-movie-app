@@ -115,3 +115,38 @@ body {
   height: 100%;
   object-fit: contain;
 }
+/* No empty controls while the stream is still loading (StreamPlayer shows its own screen) */
+.lumo-player:not([data-can-play]) .vds-video-layout {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* StreamPlayer's loading screen: a spinning purple→pink ring and a sweeping bar */
+.stream-ring {
+  background: conic-gradient(from 0deg, transparent 0%, #6c63ff 55%, #f72585 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  animation: stream-spin 0.9s linear infinite;
+}
+.stream-bar {
+  position: relative;
+}
+.stream-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6c63ff, #f72585);
+  animation: stream-sweep 1.4s ease-in-out infinite;
+}
+@keyframes stream-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes stream-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(250%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stream-ring, .stream-bar::after { animation-duration: 3s; }
+}

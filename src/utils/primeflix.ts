@@ -31,13 +31,24 @@ async function decryptUrl(payload: string) {
   return new TextDecoder().decode(plain)
 }
 
-// The HLS URL `server` has for this title, or null if it doesn't have it
-export async function fetchStreamUrl(api: string, server: string, signal?: AbortSignal): Promise<string | null> {
+async function fetchSources(api: string, signal?: AbortSignal) {
   const res = await fetch(api, { signal })
   if (!res.ok) throw new Error(`Stream lookup failed (${res.status})`)
-  const source = ((await res.json()) as SourceList)[server]
-  if (!source?.url || source.type !== "hls") return null
-  return decryptUrl(source.url)
+  return (await res.json()) as SourceList
+}
+
+const hasStream = (source?: SourceList[string]) => !!source?.url && source.type === "hls"
+
+// Names of the servers that have an HLS stream for this title
+export async function fetchAvailableServers(api: string, signal?: AbortSignal): Promise<Set<string>> {
+  const sources = await fetchSources(api, signal)
+  return new Set(Object.keys(sources).filter((name) => hasStream(sources[name])))
+}
+
+// The HLS URL `server` has for this title, or null if it doesn't have it
+export async function fetchStreamUrl(api: string, server: string, signal?: AbortSignal): Promise<string | null> {
+  const source = (await fetchSources(api, signal))[server]
+  return hasStream(source) ? decryptUrl(source.url) : null
 }
 
 // Subtitles are a nice-to-have: any failure just means none
