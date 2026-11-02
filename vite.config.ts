@@ -28,6 +28,8 @@ export default defineConfig({
       workbox: {
         // SPA: serve the app shell for any page URL when offline
         navigateFallback: '/index.html',
+        // Let crawler files load as themselves, not the app
+        navigateFallbackDenylist: [/^\/robots\.txt$/, /^\/sitemap\.xml$/, /^\/google.*\.html$/],
         runtimeCaching: [
           {
             // Posters & backdrops rarely change — serve from cache first

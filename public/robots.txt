@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /search
+Disallow: /my-list
+
+Sitemap: https://lumoflix.xyz/sitemap.xml
