@@ -2,7 +2,8 @@
 // Apple TV-style episode browser: season tabs over a side-scrolling row of episode cards
 import { useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { ChevronLeft, ChevronRight, Play } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, Play } from "lucide-react"
+import { episodeKey } from "../utils/watchedEpisodes"
 
 export type Episode = {
   episode_number: number
@@ -23,6 +24,7 @@ type Props = {
   loading?: boolean
   current: { season: number; episode: number } // the episode the Play button points at
   progress?: { season: number; episode: number; percent: number } // saved progress, if any
+  watched?: string[] // "season-episode" keys of finished episodes
   fallbackImage?: string | null // used when an episode has no still
   onPlay: (episode: number) => void
 }
@@ -39,6 +41,7 @@ export default function EpisodeList({
   loading,
   current,
   progress,
+  watched = [],
   fallbackImage,
   onPlay,
 }: Props) {
@@ -82,6 +85,8 @@ export default function EpisodeList({
             {ordered.map((s) => {
               const active = s.season_number === activeSeason
               const label = s.season_number === 0 ? "Specials" : s.name || `Season ${s.season_number}`
+              const seasonDone =
+                !!s.episode_count && watched.filter((k) => k.startsWith(`${s.season_number}-`)).length >= s.episode_count
               return (
                 <button
                   key={s.season_number}
@@ -92,7 +97,10 @@ export default function EpisodeList({
                     active ? "text-white" : "text-gray-500 hover:text-gray-300"
                   }`}
                 >
-                  {label}
+                  <span className="inline-flex items-center gap-1.5">
+                    {label}
+                    {seasonDone && <Check size={13} strokeWidth={3} className="text-primary" aria-label="watched" />}
+                  </span>
                   {active && (
                     <motion.span
                       layoutId="season-tab"
@@ -134,10 +142,13 @@ export default function EpisodeList({
             : episodes.map((ep) => {
                 const aired = hasAired(ep.air_date)
                 const isCurrent = activeSeason === current.season && ep.episode_number === current.episode
-                const percent =
+                const isWatched = watched.includes(episodeKey(activeSeason, ep.episode_number))
+                const saved =
                   progress && progress.season === activeSeason && progress.episode === ep.episode_number
                     ? progress.percent
                     : 0
+                // A finished episode shows a full bar, unless it's being rewatched
+                const percent = saved > 0 && saved < 95 ? saved : isWatched ? 100 : saved
                 const image = ep.still_path ?? fallbackImage
                 const meta = [
                   ep.runtime ? `${ep.runtime} min` : null,
@@ -151,7 +162,7 @@ export default function EpisodeList({
                     onClick={() => aired && onPlay(ep.episode_number)}
                     disabled={!aired}
                     className="group/ep flex-shrink-0 w-[78vw] max-w-[320px] sm:w-72 md:w-80 snap-start text-left disabled:cursor-default"
-                    aria-label={`Episode ${ep.episode_number}: ${ep.name}${aired ? "" : " (not aired yet)"}`}
+                    aria-label={`Episode ${ep.episode_number}: ${ep.name}${aired ? "" : " (not aired yet)"}${isWatched ? " (watched)" : ""}`}
                   >
                     {/* Still */}
                     <div
@@ -184,6 +195,12 @@ export default function EpisodeList({
                         </div>
                       )}
 
+                      {isWatched && (
+                        <span className="absolute top-2 right-2 flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full bg-black/65 backdrop-blur-sm text-[10px] font-semibold text-white">
+                          <Check size={11} strokeWidth={3} className="text-primary" /> Watched
+                        </span>
+                      )}
+
                       {percent > 0 && (
                         <div className="absolute left-0 right-0 bottom-0 h-1 bg-white/20">
                           <div className="h-full bg-gradient-to-r from-primary to-accent" style={{ width: `${percent}%` }} />
@@ -194,7 +211,7 @@ export default function EpisodeList({
                     {/* Text */}
                     <p className="mt-3 text-[11px] uppercase tracking-[0.12em] font-semibold text-gray-500">
                       Episode {ep.episode_number}
-                      {isCurrent && <span className="text-primary"> · {percent > 0 ? "Resume" : "Up next"}</span>}
+                      {isCurrent && <span className="text-primary"> · {saved > 0 && saved < 95 ? "Resume" : "Up next"}</span>}
                     </p>
                     <h3 className="mt-0.5 text-sm font-semibold text-white line-clamp-1">{ep.name}</h3>
                     {ep.overview && (

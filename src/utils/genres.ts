@@ -1,4 +1,6 @@
 // src/utils/genres.ts
+import { todayISO } from "./media"
+
 export type MediaType = "movie" | "tv"
 export type Genre = { id: number; name: string }
 
@@ -12,18 +14,18 @@ export const SORT_OPTIONS = [
 ] as const
 export type SortKey = (typeof SORT_OPTIONS)[number]["value"]
 
-// TMDB discover params per sort. TV dates use first_air_date; "top" needs a vote floor or obscure titles win.
+// TMDB discover params per sort, released titles only. TV dates use first_air_date; "top" needs a vote floor or obscure titles win.
 export function sortParams(type: MediaType, sort: SortKey): Record<string, string | number> {
-  const today = new Date().toISOString().slice(0, 10)
+  const released = { [type === "tv" ? "first_air_date.lte" : "primary_release_date.lte"]: todayISO() }
   switch (sort) {
     case "newest":
       return type === "tv"
-        ? { sort_by: "first_air_date.desc", "first_air_date.lte": today, "vote_count.gte": 10 }
-        : { sort_by: "primary_release_date.desc", "primary_release_date.lte": today, "vote_count.gte": 10 }
+        ? { ...released, sort_by: "first_air_date.desc", "vote_count.gte": 10 }
+        : { ...released, sort_by: "primary_release_date.desc", "vote_count.gte": 10 }
     case "top":
-      return { sort_by: "vote_average.desc", "vote_count.gte": 300 }
+      return { ...released, sort_by: "vote_average.desc", "vote_count.gte": 300 }
     default:
-      return { sort_by: "popularity.desc" }
+      return { ...released, sort_by: "popularity.desc" }
   }
 }
 

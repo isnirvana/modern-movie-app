@@ -3,6 +3,10 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { Play, Info, Star } from "lucide-react"
+import TitleLogo from "./TitleLogo"
+import HeroTrailer, { MuteButton, type TrailerStatus } from "./HeroTrailer"
+import { useTitleExtras } from "../hooks/useTitleExtras"
+import { useIsDesktop } from "../hooks/useMediaQuery"
 
 interface HeroItem {
   id: number
@@ -19,20 +23,37 @@ export default function HeroCarousel({ items: allItems }: { items: HeroItem[] })
   const items = allItems.filter((i) => i.backdrop_path)
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
+  const [trailerStatus, setTrailerStatus] = useState<TrailerStatus>("waiting")
+  // Sound stays as the viewer left it from slide to slide
+  const [muted, setMuted] = useState(true)
   const navigate = useNavigate()
+  const isDesktop = useIsDesktop()
 
+  const current = items[Math.min(index, items.length - 1)]
+  const next = items[(index + 1) % Math.max(items.length, 1)]
+  const extras = useTitleExtras(current?.media_type || "movie", current?.id ?? 0)
+  // Fetch the next slide's logo/trailer ahead of time
+  useTitleExtras(next?.media_type || "movie", next?.id ?? 0)
+
+  // Hold the slide while its trailer loads or plays; move on 6s after it's done (or straight away without one)
+  const trailerBusy = trailerStatus === "loading" || trailerStatus === "playing"
   useEffect(() => {
-    if (paused || items.length === 0) return
+    if (paused || trailerBusy || items.length === 0) return
     const timer = setInterval(() => {
       setIndex((i) => (i + 1) % items.length)
     }, 6000)
     return () => clearInterval(timer)
-  }, [items.length, paused])
+  }, [items.length, paused, trailerBusy])
 
-  if (items.length === 0) return null
+  if (!current) return null
 
-  const current = items[index]
   const title = current.title || current.name || ""
+  // undefined while looking it up, null when there's none
+  const logo = extras.data ? extras.data.logo : extras.isError ? null : undefined
+  const trailer = (
+    <HeroTrailer key={current.id} videoKey={extras.data?.trailer?.key} muted={muted} onStatus={setTrailerStatus} />
+  )
+  const muteButton = trailerStatus === "playing" && <MuteButton muted={muted} onToggle={() => setMuted((m) => !m)} />
   const rating = current.vote_average ?? 0
 
   const handlePlay = () => {
@@ -63,17 +84,20 @@ export default function HeroCarousel({ items: allItems }: { items: HeroItem[] })
               className="w-full h-full object-cover object-top"
               style={{ maxHeight: "72vh" }}
             />
-            {/* Bottom fade into bg */}
+            {!isDesktop && trailer}
+            {/* Bottom fade into bg (tall: the title and buttons sit on it) */}
             <div
-              className="absolute bottom-0 left-0 right-0 h-40"
+              className="absolute bottom-0 left-0 right-0 h-[60%]"
               style={{
-                background: "linear-gradient(to top, #0a0a0f 0%, rgba(10,10,15,0.85) 40%, transparent 100%)",
+                background: "linear-gradient(to top, #0a0a0f 0%, rgba(10,10,15,0.92) 30%, rgba(10,10,15,0.5) 65%, transparent 100%)",
               }}
             />
           </motion.div>
         </AnimatePresence>
 
-        {/* Content below poster */}
+        {!isDesktop && muteButton && <div className="absolute top-20 right-4 z-10">{muteButton}</div>}
+
+        {/* Content: pulled up over the poster's bottom fade so Watch Now sits well above the tab bar */}
         <AnimatePresence mode="wait">
           <motion.div
             key={`mobile-content-${current.id}`}
@@ -81,19 +105,19 @@ export default function HeroCarousel({ items: allItems }: { items: HeroItem[] })
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="px-5 pt-3 pb-6 space-y-3"
+            className="relative z-10 -mt-32 px-5 pb-5 space-y-3"
           >
             {rating > 0 && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gold/15 text-gold border border-gold/25">
                 <Star size={10} fill="currentColor" /> {rating.toFixed(1)}
               </span>
             )}
-            <h1
-              className="text-2xl font-black leading-tight"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              {title}
-            </h1>
+            <TitleLogo
+              title={title}
+              logo={logo}
+              textClassName="text-2xl font-black leading-tight"
+              logoClassName="max-h-20 max-w-[75%]"
+            />
             {current.overview && (
               <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
                 {current.overview}
@@ -147,8 +171,12 @@ export default function HeroCarousel({ items: allItems }: { items: HeroItem[] })
           />
         </AnimatePresence>
 
+        {isDesktop && trailer}
+
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/55 to-bg/10" />
         <div className="absolute inset-0 bg-gradient-to-r from-bg/90 via-bg/30 to-transparent" />
+
+        {isDesktop && muteButton && <div className="absolute bottom-24 right-16 z-10">{muteButton}</div>}
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -164,12 +192,12 @@ export default function HeroCarousel({ items: allItems }: { items: HeroItem[] })
                 <Star size={11} fill="currentColor" /> {rating.toFixed(1)} / 10
               </span>
             )}
-            <h1
-              className="text-5xl xl:text-6xl font-black leading-tight"
-              style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              {title}
-            </h1>
+            <TitleLogo
+              title={title}
+              logo={logo}
+              textClassName="text-5xl xl:text-6xl font-black leading-tight"
+              logoClassName="max-h-36 max-w-md"
+            />
             {current.overview && (
               <p className="text-base text-gray-300 line-clamp-3 max-w-md leading-relaxed">
                 {current.overview}

@@ -11,6 +11,7 @@
 // src/hooks/useTrending.ts
 import { useInfiniteQuery } from "@tanstack/react-query"
 import axios from "axios"
+import { isReleased } from "../utils/media"
 
 type TrendingType = "all" | "movie"
 
@@ -21,9 +22,9 @@ const fetchTrending = async (type: TrendingType, pageParam: number) => {
       page: pageParam,
     },
   })
-  // "all" can include people — keep only things we can play
+  // "all" can include people, and some titles aren't out yet — keep only things we can play
   res.data.results = res.data.results.filter(
-    (item: any) => item.media_type === "movie" || item.media_type === "tv"
+    (item: any) => (item.media_type === "movie" || item.media_type === "tv") && isReleased(item)
   )
   return res.data
 }

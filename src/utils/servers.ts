@@ -31,6 +31,35 @@ export type Server = {
 
 // The server Resume opens on: it accepts a start time (Cinezo can't start mid-way)
 export const RESUME_SERVER = "CineSrc"
+// Servers that can start mid-way
+const RESUMABLE = ["CineSrc", "Nova"]
+
+// The server the viewer last picked, kept in this browser so the player opens on it next time
+const PREFERRED_KEY = "lumo:server"
+
+export function getPreferredServer(): string | null {
+  try {
+    return localStorage.getItem(PREFERRED_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setPreferredServer(name: string) {
+  try {
+    localStorage.setItem(PREFERRED_KEY, name)
+  } catch {
+    // Storage blocked — just don't remember it
+  }
+}
+
+// Servers to open on, in order (the first one the title has wins, else the default):
+// the viewer's pick, but resumes need one that can start mid-way
+export function openingServers(startAt: number): string[] {
+  const preferred = getPreferredServer()
+  if (startAt <= 0) return preferred ? [preferred] : []
+  return preferred && RESUMABLE.includes(preferred) ? [preferred, RESUME_SERVER] : [RESUME_SERVER]
+}
 
 // primeflix servers that play directly. Luna and Orion's hosts refuse other sites; they play in primeflix's own player instead (our "Luna" server).
 const STREAM_SERVERS = ["Nova"]

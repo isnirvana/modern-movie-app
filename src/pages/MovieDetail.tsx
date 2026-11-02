@@ -8,12 +8,17 @@ import MobilePlayBar from "../components/MobilePlayBar"
 import VideoRow from "../components/VideoRow"
 import MyListButton from "../components/MyListButton"
 import DetailsSection, { CertBadge } from "../components/DetailsSection"
-import { movieCertification, movieDetails, formatRuntime, languageName } from "../utils/details"
+import { movieCertification, movieDetails, formatRuntime, languageName, inTheatersOnly } from "../utils/details"
+import ReleasePill from "../components/ReleasePill"
 import MediaRow from "../components/MediaRow"
-import { pickVideos, relatedItems, youtubeEmbed, type Video } from "../utils/media"
-import { movieServers, RESUME_SERVER } from "../utils/servers"
+import { pickVideos, pickLogo, pickTrailer, relatedItems, youtubeEmbed, isReleased, formatReleaseDate, type Video } from "../utils/media"
+import ComingSoonButton from "../components/ComingSoonButton"
+import { movieServers, openingServers, setPreferredServer } from "../utils/servers"
 import { getEntry, resumeTime, saveProgress, formatTime } from "../utils/watchHistory"
 import { useHistoryEntry } from "../hooks/useWatchHistory"
+import TitleLogo from "../components/TitleLogo"
+import HeroTrailer, { MuteButton, type TrailerStatus } from "../components/HeroTrailer"
+import { useIsDesktop } from "../hooks/useMediaQuery"
 import { motion } from "framer-motion"
 import { Play, Star, Clock, Calendar, ChevronLeft, Clapperboard } from "lucide-react"
 
@@ -30,16 +35,20 @@ export default function MovieDetail() {
   const resumeAt = resumeTime(saved)
   const [startAt, setStartAt] = useState(0)
   const [video, setVideo] = useState<Video | null>(null)
+  // Muted trailer behind the hero (one, in whichever layout is showing)
+  const isDesktop = useIsDesktop()
+  const [trailerStatus, setTrailerStatus] = useState<TrailerStatus>("waiting")
+  const [muted, setMuted] = useState(true)
 
   const play = () => {
     setStartAt(resumeTime(getEntry("movie", movieId)))
     setWatching(true)
   }
 
-  // Opened from Continue Watching (?play=1): go straight into the player
+  // Opened from Continue Watching (?play=1): go straight into the player (if it's out)
   useEffect(() => {
     if (m && searchParams.get("play")) {
-      play()
+      if (isReleased(m)) play()
       setSearchParams({}, { replace: true })
     }
   }, [m])
@@ -59,13 +68,28 @@ export default function MovieDetail() {
   const rating = m.vote_average ?? 0
   const genres: { id: number; name: string }[] = m.genres ?? []
   const playLabel = resumeAt > 0 ? `Resume · ${formatTime(resumeAt)}` : "Watch Now"
+  // Not out yet: "Coming <date>" instead of Play
+  const released = isReleased(m)
 
   // Trailers & extras, and "More Like This"
   const videos = pickVideos(m.videos?.results)
   const trailer = videos.find((v) => v.type === "Trailer") ?? videos[0]
+  const logo = pickLogo(m.images)
+  // Stopped while the player or a video is open
+  const backgroundTrailer = (
+    <HeroTrailer
+      videoKey={watching || video ? undefined : pickTrailer(m.videos?.results)?.key}
+      muted={muted}
+      onStatus={setTrailerStatus}
+    />
+  )
+  const muteButton = trailerStatus === "playing" && <MuteButton muted={muted} onToggle={() => setMuted((x) => !x)} />
   const related = relatedItems(m, "movie")
   // Age rating, crew, money, studios
   const cert = movieCertification(m)
+  // Out in cinemas only: say so (Play stays, some servers have it early)
+  const theaters = inTheatersOnly(m)
+  const theatersLabel = theaters && `In theaters${theaters.digital ? ` · digital ${formatReleaseDate(theaters.digital)}` : ""}`
   const details = movieDetails(m)
   const runtime = formatRuntime(m.runtime)
   // Original language in the header only when it isn't English
@@ -97,11 +121,13 @@ export default function MovieDetail() {
             className="w-full h-full object-cover object-top"
             style={{ maxHeight: "72vh" }}
           />
+          {!isDesktop && backgroundTrailer}
           {/* Bottom fade */}
           <div
             className="absolute bottom-0 left-0 right-0 h-40"
             style={{ background: "linear-gradient(to top, #0a0a0f 0%, rgba(10,10,15,0.8) 40%, transparent 100%)" }}
           />
+          {!isDesktop && muteButton && <div className="absolute bottom-14 right-4 z-10">{muteButton}</div>}
           {/* Back button */}
           <button
             onClick={() => navigate(-1)}
@@ -129,9 +155,7 @@ export default function MovieDetail() {
             </div>
           )}
 
-          <h1 className="text-2xl font-black leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            {m.title}
-          </h1>
+          <TitleLogo title={m.title} logo={logo} textClassName="text-2xl font-black leading-tight" logoClassName="max-h-20 max-w-[75%]" />
 
           {/* Meta */}
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
@@ -144,6 +168,7 @@ export default function MovieDetail() {
             {year && <span className="flex items-center gap-1"><Calendar size={11} className="text-gray-500" /> {year}</span>}
             {runtime && <span className="flex items-center gap-1"><Clock size={11} className="text-gray-500" /> {runtime}</span>}
             {foreignLanguage && <span>{foreignLanguage}</span>}
+            {theatersLabel && <ReleasePill kind="theaters" label={theatersLabel} />}
           </div>
 
           {m.overview && (
@@ -162,9 +187,20 @@ export default function MovieDetail() {
         </motion.div>
 
         <MobilePlayBar>
-          <button onClick={play} className="btn-primary w-full justify-center py-3.5 text-base">
-            <Play size={16} fill="white" /> {playLabel}
-          </button>
+          {released ? (
+            <button onClick={play} className="btn-primary w-full justify-center py-3.5 text-base">
+              <Play size={16} fill="white" /> {playLabel}
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <ComingSoonButton date={m.release_date} className="flex-1 justify-center py-3.5 text-base" />
+              {trailer && (
+                <button onClick={() => setVideo(trailer)} className="btn-primary justify-center px-4 py-3.5" aria-label="Watch trailer">
+                  <Clapperboard size={18} />
+                </button>
+              )}
+            </div>
+          )}
         </MobilePlayBar>
       </div>
 
@@ -176,8 +212,10 @@ export default function MovieDetail() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(https://image.tmdb.org/t/p/original${m.backdrop_path})` }}
         />
+        {isDesktop && backgroundTrailer}
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/60 to-bg/10" />
         <div className="absolute inset-0 bg-gradient-to-r from-bg/95 via-bg/40 to-transparent" />
+        {isDesktop && muteButton && <div className="absolute bottom-12 right-16 z-10">{muteButton}</div>}
 
         <button
           onClick={() => navigate(-1)}
@@ -211,9 +249,7 @@ export default function MovieDetail() {
                 ))}
               </div>
             )}
-            <h1 className="text-5xl xl:text-6xl font-black leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              {m.title}
-            </h1>
+            <TitleLogo title={m.title} logo={logo} textClassName="text-5xl xl:text-6xl font-black leading-tight" logoClassName="max-h-36 max-w-md" />
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
               {rating > 0 && (
                 <span className="flex items-center gap-1.5 text-gold font-semibold">
@@ -224,14 +260,19 @@ export default function MovieDetail() {
               {year && <span className="flex items-center gap-1.5"><Calendar size={13} className="text-gray-500" /> {year}</span>}
               {runtime && <span className="flex items-center gap-1.5"><Clock size={13} className="text-gray-500" /> {runtime}</span>}
               {foreignLanguage && <span className="text-gray-400">{foreignLanguage}</span>}
+              {theatersLabel && <ReleasePill kind="theaters" label={theatersLabel} large />}
             </div>
             {m.overview && (
               <p className="text-sm text-gray-300 max-w-lg line-clamp-4 leading-relaxed">{m.overview}</p>
             )}
             <div className="flex items-center gap-3 pt-2">
-              <button onClick={play} className="btn-primary">
-                <Play size={16} fill="white" /> {playLabel}
-              </button>
+              {released ? (
+                <button onClick={play} className="btn-primary">
+                  <Play size={16} fill="white" /> {playLabel}
+                </button>
+              ) : (
+                <ComingSoonButton date={m.release_date} />
+              )}
               {trailer && (
                 <button onClick={() => setVideo(trailer)} className="btn-secondary">
                   <Clapperboard size={16} /> Trailer
@@ -264,8 +305,8 @@ export default function MovieDetail() {
         open={watching}
         onClose={() => setWatching(false)}
         servers={movieServers(movieId, m.imdb_id, startAt)}
-        // Cinezo can't start mid-way, so resumes open on a server that takes a start time
-        initialServer={startAt > 0 ? RESUME_SERVER : undefined}
+        initialServers={openingServers(startAt)}
+        onServerChange={setPreferredServer}
         onPlayerEvent={(e) =>
           saveProgress({
             type: "movie",

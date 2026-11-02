@@ -2,6 +2,8 @@
 // Watch progress, kept in this browser only (no account needed).
 // Filled from the players' progress events (Cinezo, CineSrc); powers Continue Watching and Resume.
 
+import { markEpisodeWatched } from "./watchedEpisodes"
+
 export type MediaType = "movie" | "tv"
 
 export type HistoryEntry = {
@@ -70,6 +72,10 @@ export function saveProgress(entry: Omit<HistoryEntry, "updatedAt">) {
   // Ignore the first seconds (and the 0:00 "play" event sent before a resume seek), so they never overwrite real progress
   if (entry.time < 5) return
   const others = getHistory().filter((e) => !(e.type === entry.type && e.id === entry.id))
+
+  if (entry.type === "tv" && entry.season != null && entry.episode != null && isFinished(entry)) {
+    markEpisodeWatched(entry.id, entry.season, entry.episode)
+  }
 
   // A finished movie leaves Continue Watching; a finished episode stays so the show can be picked up again
   if (entry.type === "movie" && isFinished(entry)) {
