@@ -1,6 +1,6 @@
 // src/components/PlayerModal.tsx
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useDragControls, type PanInfo } from "framer-motion"
 import { X, Server as ServerIcon } from "lucide-react"
 import type { Server, PlayerEvent } from "../utils/servers"
 import { fetchAvailableServers } from "../utils/primeflix"
@@ -20,18 +20,24 @@ type Props = {
   onPlayerEvent?: (e: PlayerEvent) => void
   // Shown on top of the video, e.g. the Up Next card
   overlay?: ReactNode
-  // Server to open on instead of the default (by name), e.g. one that can resume
-  initialServer?: string
+  // Servers to open on instead of the default (by name, first one the title has wins), e.g. the viewer's pick
+  initialServers?: string[]
+  // Fired when the viewer picks a server (e.g. to remember it)
+  onServerChange?: (name: string) => void
 }
 
 // Some servers send time updates several times a second; pass them on at most this often
 const TIMEUPDATE_EVERY_MS = 5000
 
+// Swipe-to-close: this far down, or this fast
+const SWIPE_CLOSE_PX = 120
+const SWIPE_CLOSE_VELOCITY = 600
+
 const isDesktop = () => typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches
 
-export default function PlayerModal({ open, onClose, servers, title, subtitle, posterPath, backdropPath, onPlayerEvent, overlay, initialServer }: Props) {
+export default function PlayerModal({ open, onClose, servers, title, subtitle, posterPath, backdropPath, onPlayerEvent, overlay, initialServers, onServerChange }: Props) {
   const [loaded, setLoaded] = useState(false)
-  // The server the viewer picked; null means `initialServer`, or else the default (the first, Cinezo)
+  // The server the viewer picked; null means one of `initialServers`, or else the default (the first, Cinezo)
   const [serverName, setServerName] = useState<string | null>(null)
 
   // `stream` servers only show for titles they have, so look that up first (they all share one API)
@@ -50,14 +56,29 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
 
   const visible = servers.filter((s) => !s.stream || available?.has(s.name))
   // While a new episode's lookup runs, stay on a picked stream server instead of briefly loading another one
-  const wanted = serverName ?? initialServer
-  const waiting = !!wanted && !available && !!servers.find((s) => s.name === wanted)?.stream
-  const server = waiting ? undefined : visible.find((s) => s.name === wanted) ?? visible[0]
+  const wanted = serverName ? [serverName] : initialServers ?? []
+  const waiting = !!streamApi && !available && wanted.some((name) => servers.find((s) => s.name === name)?.stream)
+  const server = waiting
+    ? undefined
+    : wanted.map((name) => visible.find((s) => s.name === name)).find(Boolean) ?? visible[0]
   const src = server?.src ?? ""
 
   // Every time the player opens, start on the default server (or the requested one)
   useEffect(() => {
     if (open) setServerName(null)
+  }, [open])
+
+  // Phones: whenever a player goes fullscreen, turn to landscape (and let go after), in case the server doesn't
+  useEffect(() => {
+    if (!open || isDesktop()) return
+    // Missing on older iPhones
+    const orientation = screen.orientation as (ScreenOrientation & { lock?: (o: string) => Promise<void> }) | undefined
+    const onFullscreenChange = () => {
+      if (document.fullscreenElement) orientation?.lock?.("landscape").catch(() => {})
+      else orientation?.unlock?.()
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange)
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange)
   }, [open])
 
   // Lock page scroll + close on Escape while open
@@ -119,7 +140,26 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
     lastSent.current = 0
   }, [src, server?.name])
 
+  const pickServer = (name: string) => {
+    setServerName(name)
+    onServerChange?.(name)
+  }
+
+  // Keep the active server's chip in view (the switcher scrolls sideways on phones)
+  const switcherRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    switcherRef.current
+      ?.querySelector<HTMLElement>('[aria-pressed="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" })
+  }, [server?.name, open])
+
   const desktop = isDesktop()
+
+  // Phones: drag the header down to close, like dismissing an app sheet (the video itself takes all touches)
+  const dragControls = useDragControls()
+  const onDragEnd = (_: unknown, info: PanInfo) => {
+    if (info.offset.y > SWIPE_CLOSE_PX || info.velocity.y > SWIPE_CLOSE_VELOCITY) onClose()
+  }
 
   return (
     <AnimatePresence>
@@ -142,6 +182,12 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
           <motion.div
             role="dialog"
             aria-modal="true"
+            drag={desktop ? false : "y"}
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.9 }}
+            onDragEnd={onDragEnd}
             aria-label={`Now watching ${title}`}
             className="relative z-10 flex flex-col w-full h-full md:h-auto md:max-w-5xl md:rounded-2xl overflow-hidden"
             style={{
@@ -155,15 +201,22 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
             exit={desktop ? { scale: 0.96, opacity: 0 } : { y: "100%" }}
             transition={desktop ? { duration: 0.25, ease: "easeOut" } : { type: "spring", damping: 32, stiffness: 320 }}
           >
-            {/* Header bar */}
+            {/* Header bar (also the swipe-down handle on phones) */}
             <div
-              className="flex-shrink-0 flex items-center gap-3 px-4 py-3 md:px-5 md:py-4"
+              onPointerDown={(e) => !desktop && dragControls.start(e)}
+              className="relative flex-shrink-0 flex items-center gap-3 px-4 py-3 md:px-5 md:py-4 touch-none md:touch-auto"
               style={{
                 background: "linear-gradient(90deg, rgba(108,99,255,0.14) 0%, rgba(247,37,133,0.07) 100%)",
                 borderBottom: "1px solid rgba(255,255,255,0.06)",
                 paddingTop: desktop ? undefined : "max(0.75rem, env(safe-area-inset-top))",
               }}
             >
+              {/* Grab handle (phones) */}
+              <span
+                aria-hidden="true"
+                className="md:hidden absolute left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-white/25"
+                style={{ top: "max(0.3rem, calc(env(safe-area-inset-top) - 0.45rem))" }}
+              />
               {posterPath && (
                 <img
                   src={`https://image.tmdb.org/t/p/w92${posterPath}`}
@@ -189,6 +242,7 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
             {/* Server switcher — under the video on phones (thumb reach), under the header on desktop */}
             {visible.length > 1 && (
               <div
+                ref={switcherRef}
                 className="order-last md:order-none flex-shrink-0 flex items-center gap-2 px-4 py-3 md:py-2 md:px-5 overflow-x-auto border-t md:border-t-0 md:border-b border-white/[0.06]"
               >
                 <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-gray-500 font-semibold flex-shrink-0">
@@ -199,7 +253,7 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
                   return (
                     <button
                       key={s.name}
-                      onClick={() => setServerName(s.name)}
+                      onClick={() => pickServer(s.name)}
                       aria-pressed={active}
                       className={`flex-shrink-0 px-4 py-2 md:px-3 md:py-1 text-sm md:text-xs rounded-full font-medium transition-colors ${
                         active ? "bg-primary text-white" : "bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white"
@@ -237,7 +291,7 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
                     title={title}
                     subtitle={subtitle}
                     backdropPath={backdropPath}
-                    fallback={visible[0] !== server ? { name: visible[0].name, onSelect: () => setServerName(visible[0].name) } : undefined}
+                    fallback={visible[0] !== server ? { name: visible[0].name, onSelect: () => pickServer(visible[0].name) } : undefined}
                     onLoad={() => setLoaded(true)}
                     onEvent={report}
                   />
@@ -249,8 +303,9 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
                   title={title}
                   onLoad={() => setLoaded(true)}
                   allowFullScreen
-                  allow="autoplay; fullscreen"
-                  sandbox={server.sandbox ? "allow-scripts allow-same-origin allow-presentation" : undefined}
+                  allow="autoplay; fullscreen; picture-in-picture; screen-wake-lock"
+                  // allow-orientation-lock: players turn the phone to landscape when going fullscreen (Cinezo does)
+                  sandbox={server.sandbox ? "allow-scripts allow-same-origin allow-presentation allow-orientation-lock" : undefined}
                   className="absolute inset-0 w-full h-full"
                   style={{ border: "none" }}
                 />

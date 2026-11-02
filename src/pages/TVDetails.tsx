@@ -9,14 +9,20 @@ import MobilePlayBar from "../components/MobilePlayBar"
 import VideoRow from "../components/VideoRow"
 import MyListButton from "../components/MyListButton"
 import DetailsSection, { CertBadge, StatusPill } from "../components/DetailsSection"
-import { tvCertification, tvDetails, tvStatus, languageName } from "../utils/details"
+import { tvCertification, tvDetails, tvStatus, languageName, nextEpisodeLabel } from "../utils/details"
+import ReleasePill from "../components/ReleasePill"
 import MediaRow from "../components/MediaRow"
-import { pickVideos, relatedItems, youtubeEmbed, type Video } from "../utils/media"
+import { pickVideos, pickLogo, pickTrailer, relatedItems, youtubeEmbed, isReleased, type Video } from "../utils/media"
+import ComingSoonButton from "../components/ComingSoonButton"
 import NextUpCard from "../components/NextUpCard"
 import EpisodeList, { type Episode, type Season } from "../components/EpisodeList"
-import { tvServers, RESUME_SERVER } from "../utils/servers"
+import { tvServers, openingServers, setPreferredServer } from "../utils/servers"
 import { getEntry, resumeTime, saveProgress, markUpNext, formatTime } from "../utils/watchHistory"
 import { useHistoryEntry } from "../hooks/useWatchHistory"
+import { useWatchedEpisodes } from "../hooks/useWatchedEpisodes"
+import TitleLogo from "../components/TitleLogo"
+import HeroTrailer, { MuteButton, type TrailerStatus } from "../components/HeroTrailer"
+import { useIsDesktop } from "../hooks/useMediaQuery"
 import { motion, AnimatePresence } from "framer-motion"
 import { Play, Star, Calendar, ChevronLeft, Tv, Clapperboard } from "lucide-react"
 
@@ -28,6 +34,7 @@ export default function TVDetails() {
 
   // Start on the last episode watched, if any
   const saved = useHistoryEntry("tv", tvId)
+  const watched = useWatchedEpisodes(tvId)
   const [season, setSeason] = useState(() => getEntry("tv", tvId)?.season ?? 1)
   const { data: seasonData } = useSeasonDetails(tvId, season)
   const episodes: Episode[] = seasonData?.episodes || []
@@ -39,6 +46,10 @@ export default function TVDetails() {
   const [startAt, setStartAt] = useState(0)
   const [showNext, setShowNext] = useState(false)
   const [video, setVideo] = useState<Video | null>(null)
+  // Muted trailer behind the hero (one, in whichever layout is showing)
+  const isDesktop = useIsDesktop()
+  const [trailerStatus, setTrailerStatus] = useState<TrailerStatus>("waiting")
+  const [muted, setMuted] = useState(true)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // If the chosen episode isn't in the loaded season, fall back to the season's first episode
@@ -57,10 +68,10 @@ export default function TVDetails() {
     setWatching(true)
   }
 
-  // Opened from Continue Watching (?play=1): go straight into the player
+  // Opened from Continue Watching (?play=1): go straight into the player (if it's out)
   useEffect(() => {
     if (tv && searchParams.get("play")) {
-      play()
+      if (isReleased(tv)) play()
       setSearchParams({}, { replace: true })
     }
   }, [tv])
@@ -85,10 +96,21 @@ export default function TVDetails() {
   // Trailers & extras, and "More Like This"
   const videos = pickVideos(tv.videos?.results)
   const trailer = videos.find((v) => v.type === "Trailer") ?? videos[0]
+  const logo = pickLogo(tv.images)
+  // Stopped while the player or a video is open
+  const backgroundTrailer = (
+    <HeroTrailer
+      videoKey={watching || video ? undefined : pickTrailer(tv.videos?.results)?.key}
+      muted={muted}
+      onStatus={setTrailerStatus}
+    />
+  )
+  const muteButton = trailerStatus === "playing" && <MuteButton muted={muted} onToggle={() => setMuted((x) => !x)} />
   const related = relatedItems(tv, "tv")
   // Age rating, status, creators, network
   const cert = tvCertification(tv)
   const status = tvStatus(tv.status)
+  const nextLabel = nextEpisodeLabel(tv)
   const details = tvDetails(tv)
   const seasonCount: number = tv.number_of_seasons ?? seasons.filter((s) => s.season_number > 0).length
   const foreignLanguage = tv.original_language && tv.original_language !== "en" ? languageName(tv.original_language) : null
@@ -104,6 +126,8 @@ export default function TVDetails() {
   }
 
   const resumeAt = resumeTime(saved, season, episode)
+  // Not premiered yet: "Coming <date>" instead of Play
+  const released = isReleased(tv)
   const playLabel = resumeAt > 0
     ? `Resume S${season} E${episode} · ${formatTime(resumeAt)}`
     : `Play S${season} E${episode}`
@@ -145,11 +169,13 @@ export default function TVDetails() {
             className="w-full h-full object-cover object-top"
             style={{ maxHeight: "72vh" }}
           />
+          {!isDesktop && backgroundTrailer}
           {/* Bottom fade */}
           <div
             className="absolute bottom-0 left-0 right-0 h-40"
             style={{ background: "linear-gradient(to top, #0a0a0f 0%, rgba(10,10,15,0.8) 40%, transparent 100%)" }}
           />
+          {!isDesktop && muteButton && <div className="absolute bottom-14 right-4 z-10">{muteButton}</div>}
           {/* Back button */}
           <button
             onClick={() => navigate(-1)}
@@ -181,9 +207,7 @@ export default function TVDetails() {
             </div>
           )}
 
-          <h1 className="text-2xl font-black leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            {tv.name}
-          </h1>
+          <TitleLogo title={tv.name} logo={logo} textClassName="text-2xl font-black leading-tight" logoClassName="max-h-20 max-w-[75%]" />
 
           {/* Meta */}
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
@@ -197,6 +221,7 @@ export default function TVDetails() {
             {seasonCount > 0 && <span>{seasonCount} Season{seasonCount > 1 ? "s" : ""}</span>}
             {foreignLanguage && <span>{foreignLanguage}</span>}
             <StatusPill status={status} />
+            {nextLabel && <ReleasePill kind="next" label={nextLabel} />}
           </div>
 
           {tv.overview && (
@@ -214,9 +239,20 @@ export default function TVDetails() {
         </motion.div>
 
         <MobilePlayBar>
-          <button onClick={() => play()} className="btn-primary w-full justify-center py-3.5 text-base">
-            <Play size={16} fill="white" /> {playLabel}
-          </button>
+          {released ? (
+            <button onClick={() => play()} className="btn-primary w-full justify-center py-3.5 text-base">
+              <Play size={16} fill="white" /> {playLabel}
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <ComingSoonButton date={tv.first_air_date} className="flex-1 justify-center py-3.5 text-base" />
+              {trailer && (
+                <button onClick={() => setVideo(trailer)} className="btn-primary justify-center px-4 py-3.5" aria-label="Watch trailer">
+                  <Clapperboard size={18} />
+                </button>
+              )}
+            </div>
+          )}
         </MobilePlayBar>
       </div>
 
@@ -228,8 +264,10 @@ export default function TVDetails() {
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: `url(https://image.tmdb.org/t/p/original${tv.backdrop_path})` }}
         />
+        {isDesktop && backgroundTrailer}
         <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/65 to-bg/10" />
         <div className="absolute inset-0 bg-gradient-to-r from-bg/95 via-bg/40 to-transparent" />
+        {isDesktop && muteButton && <div className="absolute bottom-12 right-16 z-10">{muteButton}</div>}
 
         <button
           onClick={() => navigate(-1)}
@@ -264,9 +302,7 @@ export default function TVDetails() {
                 <span key={g.id} className="px-3 py-1 text-xs rounded-full glass text-gray-300 font-medium">{g.name}</span>
               ))}
             </div>
-            <h1 className="text-5xl xl:text-6xl font-black leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              {tv.name}
-            </h1>
+            <TitleLogo title={tv.name} logo={logo} textClassName="text-5xl xl:text-6xl font-black leading-tight" logoClassName="max-h-36 max-w-md" />
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
               {rating > 0 && (
                 <span className="flex items-center gap-1.5 text-gold font-semibold">
@@ -278,14 +314,19 @@ export default function TVDetails() {
               {seasonCount > 0 && <span className="text-gray-400">{seasonCount} Season{seasonCount > 1 ? "s" : ""}</span>}
               {foreignLanguage && <span className="text-gray-400">{foreignLanguage}</span>}
               <StatusPill status={status} large />
+              {nextLabel && <ReleasePill kind="next" label={nextLabel} large />}
             </div>
             {tv.overview && (
               <p className="text-sm text-gray-300 max-w-lg line-clamp-3 leading-relaxed">{tv.overview}</p>
             )}
             <div className="flex items-center gap-3 pt-1">
-              <button onClick={() => play()} className="btn-primary">
-                <Play size={16} fill="white" /> {playLabel}
-              </button>
+              {released ? (
+                <button onClick={() => play()} className="btn-primary">
+                  <Play size={16} fill="white" /> {playLabel}
+                </button>
+              ) : (
+                <ComingSoonButton date={tv.first_air_date} />
+              )}
               {trailer && (
                 <button onClick={() => setVideo(trailer)} className="btn-secondary">
                   <Clapperboard size={16} /> Trailer
@@ -310,6 +351,7 @@ export default function TVDetails() {
             ? { season: saved.season, episode: saved.episode, percent: Math.min(100, (saved.time / saved.duration) * 100) }
             : undefined
         }
+        watched={watched}
         fallbackImage={tv.backdrop_path}
         onPlay={(ep) => play(browseSeason, ep)}
       />
@@ -340,8 +382,8 @@ export default function TVDetails() {
         open={watching}
         onClose={() => { setWatching(false); setShowNext(false) }}
         servers={tvServers(tvId, season, episode, tv.external_ids?.imdb_id ?? tv.imdb_id, startAt)}
-        // Cinezo can't start mid-way, so resumes open on a server that takes a start time
-        initialServer={startAt > 0 ? RESUME_SERVER : undefined}
+        initialServers={openingServers(startAt)}
+        onServerChange={setPreferredServer}
         onPlayerEvent={(e) => {
           saveProgress({
             type: "tv",

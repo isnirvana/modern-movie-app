@@ -115,6 +115,41 @@ body {
   height: 100%;
   object-fit: contain;
 }
+/* HeroTrailer: a 16:9 video covering its box at any shape (like object-fit: cover),
+   zoomed a little so YouTube's edges and title bar stay out of view */
+.trailer-box {
+  container-type: size;
+}
+.trailer-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100cqw, 177.78cqh);
+  height: max(100cqh, 56.25cqw);
+  transform: translate(-50%, -50%) scale(1.2);
+  border: 0;
+}
+
+/* Top10Row: big outlined rank numbers */
+.top10-rank {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-size: 7.5rem;
+  color: #0a0a0f;
+  -webkit-text-stroke: 3px rgba(255, 255, 255, 0.55);
+}
+@media (min-width: 768px) {
+  .top10-rank {
+    font-size: 10rem;
+    -webkit-text-stroke-width: 4px;
+  }
+}
+
+/* Our search boxes have their own clear button */
+.search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  display: none;
+}
+
 /* No empty controls while the stream is still loading (StreamPlayer shows its own screen) */
 .lumo-player:not([data-can-play]) .vds-video-layout {
   opacity: 0;

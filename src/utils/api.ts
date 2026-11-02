@@ -1,4 +1,5 @@
 import axios from "axios"
+import { isReleased } from "./media"
 
 const TMDB_BASE = "https://api.themoviedb.org/3"
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -29,21 +30,40 @@ export const fetchByGenre = (type: "movie" | "tv", genreId: number, params: Reco
     })
     .then((res) => res.data)
 
+// Title logos: English ones, else language-neutral
+const LOGO_LANGUAGES = "en,null"
+
+// Just a title's logo and videos (for the Home hero, which only has list data)
+export const fetchTitleExtras = (type: "movie" | "tv", id: number) =>
+  api
+    .get(`/${type}/${id}`, { params: { append_to_response: "videos,images", include_image_language: LOGO_LANGUAGES } })
+    .then((res) => res.data)
+
 // Fetch movie details + credits
 export const fetchMovieDetails = (id: number) =>
   api
-    .get(`/movie/${id}`, { params: { append_to_response: "credits,videos,recommendations,similar,release_dates" } })
+    .get(`/movie/${id}`, {
+      params: { append_to_response: "credits,videos,images,recommendations,similar,release_dates", include_image_language: LOGO_LANGUAGES },
+    })
     .then((res) => res.data)
 
 export const fetchTVDetails = (id: number) =>
   api
-    .get(`/tv/${id}`, { params: { append_to_response: "credits,external_ids,videos,recommendations,similar,content_ratings" } })
+    .get(`/tv/${id}`, {
+      params: {
+        append_to_response: "credits,external_ids,videos,images,recommendations,similar,content_ratings",
+        include_image_language: LOGO_LANGUAGES,
+      },
+    })
     .then((res) => res.data)
 
-// Fetch one page of any TMDB list endpoint, tagging each item with its media type
-export const fetchList = (path: string, mediaType?: "movie" | "tv") =>
+// Fetch one page of any TMDB list endpoint, tagging each item with its media type.
+// Keeps only released titles, or with `upcoming` only unreleased ones.
+export const fetchList = (path: string, mediaType?: "movie" | "tv", upcoming = false) =>
   api
     .get(path)
     .then((res) =>
-      res.data.results.map((item: any) => ({ ...item, media_type: item.media_type ?? mediaType }))
+      res.data.results
+        .filter((item: any) => isReleased(item) !== upcoming)
+        .map((item: any) => ({ ...item, media_type: item.media_type ?? mediaType }))
     )
