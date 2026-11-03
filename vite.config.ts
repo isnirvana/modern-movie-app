@@ -43,5 +43,7 @@ export default defineConfig({
     }),
   ],
   server: { port: 3000 },
+  // Lets a Cloudflare quick tunnel (https://….trycloudflare.com) serve the preview, for testing on phones over HTTPS
+  preview: { allowedHosts: ['.trycloudflare.com'] },
   define: { 'process.env': {} },
 });
