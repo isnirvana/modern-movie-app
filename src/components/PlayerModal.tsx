@@ -28,6 +28,8 @@ type Props = {
 
 // Some servers send time updates several times a second; pass them on at most this often
 const TIMEUPDATE_EVERY_MS = 5000
+// Streams can stall just short of the end and never say "ended" (seen on VidSpark): this close counts as the end
+const END_SLACK_S = 2
 
 // Swipe-to-close: this far down, or this fast
 const SWIPE_CLOSE_PX = 120
@@ -101,6 +103,7 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
   onPlayerEventRef.current = onPlayerEvent
   const lastDuration = useRef(NaN)
   const lastSent = useRef(0)
+  const endedSent = useRef(false)
 
   const report = useCallback((ev: PlayerEvent) => {
     let { currentTime, duration } = ev
@@ -110,12 +113,23 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
     if (ev.event === "ended" && !Number.isFinite(currentTime)) currentTime = duration
     if (!Number.isFinite(currentTime) || !Number.isFinite(duration)) return
 
-    if (ev.event === "timeupdate") {
+    const atEnd = ev.event === "timeupdate" && duration - currentTime <= END_SLACK_S
+    const event = atEnd ? "ended" : ev.event
+
+    // Pass "ended" on once per playthrough, whether it was sent or reached
+    if (event === "ended") {
+      if (endedSent.current) return
+      endedSent.current = true
+    } else if (duration - currentTime > END_SLACK_S) {
+      endedSent.current = false
+    }
+
+    if (event === "timeupdate") {
       const now = Date.now()
       if (now - lastSent.current < TIMEUPDATE_EVERY_MS) return
       lastSent.current = now
     }
-    onPlayerEventRef.current?.({ event: ev.event, currentTime, duration })
+    onPlayerEventRef.current?.({ event, currentTime, duration })
   }, [])
 
   // Iframe servers send their progress as messages
@@ -138,6 +152,7 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
     setLoaded(false)
     lastDuration.current = NaN
     lastSent.current = 0
+    endedSent.current = false
   }, [src, server?.name])
 
   const pickServer = (name: string) => {
