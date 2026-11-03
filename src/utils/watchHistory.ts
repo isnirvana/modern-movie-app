@@ -61,6 +61,9 @@ function write(entries: HistoryEntry[]) {
   window.dispatchEvent(new Event(CHANGE_EVENT))
 }
 
+// Sync (utils/sync.ts): swaps in the account's copy
+export const replaceHistory = (entries: HistoryEntry[]) => write(entries)
+
 export function getEntry(type: MediaType, id: number) {
   return getHistory().find((e) => e.type === type && e.id === id)
 }

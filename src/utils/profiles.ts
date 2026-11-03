@@ -72,10 +72,8 @@ export function updateProfile(id: string, changes: Partial<Omit<Profile, "id">>)
   write({ ...state, list: state.list.map((p) => (p.id === id ? { ...p, ...changes } : p)) })
 }
 
-// Deletes a profile and everything saved under it. The first profile can't be deleted.
-export function deleteProfile(id: string) {
-  if (id === MAIN_ID) return
-  const state = getProfilesState()
+// Removes everything saved under a profile (its keys end in ":<id>")
+function forgetProfileData(id: string) {
   try {
     const suffix = `:${id}`
     Object.keys(localStorage)
@@ -84,7 +82,25 @@ export function deleteProfile(id: string) {
   } catch {
     // Storage blocked — nothing to clean up
   }
+}
+
+// Deletes a profile and everything saved under it. The first profile can't be deleted.
+export function deleteProfile(id: string) {
+  if (id === MAIN_ID) return
+  const state = getProfilesState()
+  forgetProfileData(id)
   write({ list: state.list.filter((p) => p.id !== id), active: state.active === id ? MAIN_ID : state.active })
+}
+
+// Sync (utils/sync.ts): swaps in the account's profiles. Returns false when the profile in use is gone
+// (deleted on another device): the app then has to restart on the first profile.
+export function replaceProfiles(list: Profile[]) {
+  if (!list.length) return true
+  const state = getProfilesState()
+  state.list.filter((p) => p.id !== MAIN_ID && !list.some((q) => q.id === p.id)).forEach((p) => forgetProfileData(p.id))
+  const stillThere = list.some((p) => p.id === state.active)
+  write({ list, active: stillThere ? state.active : list[0].id })
+  return stillThere
 }
 
 // Switches profile and restarts the app on Home, so nothing from the previous profile stays loaded

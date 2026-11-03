@@ -8,7 +8,7 @@ const STORAGE_KEY = "lumo:watched" // per profile (see profiles.ts)
 const CHANGE_EVENT = "lumo:watched-change"
 
 // { "1399": ["1-1", "1-2"] }: show id → "season-episode" keys
-type Watched = Record<string, string[]>
+export type Watched = Record<string, string[]>
 
 export const episodeKey = (season: number, episode: number) => `${season}-${episode}`
 
@@ -40,6 +40,16 @@ export function markEpisodeWatched(showId: number, season: number, episode: numb
   if (show.includes(key)) return
   try {
     localStorage.setItem(profileKey(STORAGE_KEY), JSON.stringify({ ...all, [showId]: [...show, key] }))
+  } catch {
+    return
+  }
+  window.dispatchEvent(new Event(CHANGE_EVENT))
+}
+
+// Sync (utils/sync.ts): swaps in the account's copy
+export function replaceWatched(watched: Watched) {
+  try {
+    localStorage.setItem(profileKey(STORAGE_KEY), JSON.stringify(watched))
   } catch {
     return
   }

@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { Check, Lock, Pencil, Plus, Settings2, Trash2 } from "lucide-react"
 import ProfileAvatar from "../components/ProfileAvatar"
+import AccountPanel from "../components/AccountPanel"
 import { useProfiles } from "../hooks/useProfiles"
 import {
   MAIN_ID,
@@ -99,6 +100,9 @@ export default function ProfilesPage() {
           {managing ? <><Check size={16} /> Done</> : <><Settings2 size={16} /> Manage profiles</>}
         </button>
       )}
+
+      {/* Not in Kids profiles: kids shouldn't sign the account out (or delete it) */}
+      {!inKids && <AccountPanel />}
 
       <AnimatePresence>
         {editing && <ProfileEditor key="editor" profile={editing} activeId={active} onClose={() => setEditing(null)} />}

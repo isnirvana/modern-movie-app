@@ -51,6 +51,9 @@ function write(items: ListItem[]) {
   window.dispatchEvent(new Event(CHANGE_EVENT))
 }
 
+// Sync (utils/sync.ts): swaps in the account's copy
+export const replaceMyList = (items: ListItem[]) => write(items)
+
 export const isInMyList = (type: MediaType, id: number) =>
   getMyList().some((i) => i.type === type && i.id === id)
 
