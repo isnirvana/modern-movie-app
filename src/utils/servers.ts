@@ -32,7 +32,7 @@ export type Server = {
 // The server Resume opens on: it accepts a start time (Cinezo can't start mid-way)
 export const RESUME_SERVER = "CineSrc"
 // Servers that can start mid-way
-const RESUMABLE = ["CineSrc", "Nova"]
+const RESUMABLE = ["CineSrc", "VidSpark", "Nova"]
 
 // The server the viewer last picked, kept in this browser so the player opens on it next time
 const PREFERRED_KEY = "lumo:server"
@@ -97,6 +97,18 @@ const CINESRC_EVENTS: Server["events"] = {
   },
 }
 
+// VidSpark: flat messages tagged with its source, { source: "vidspark-player", event, currentTime, duration }
+const VIDSPARK_EVENTS: Server["events"] = {
+  origin: "https://vidspark.to",
+  parse: (msg) => {
+    if (msg?.source !== "vidspark-player" || msg.event === "playerstatus") return null
+    return { event: msg.event, currentTime: Number(msg.currentTime), duration: Number(msg.duration) }
+  },
+}
+
+// VidSpark: our purple; `t` is always sent so its own saved position can't override ours (e.g. on Restart)
+const vidsparkParams = (startAt = 0) => `?theme=6c63ff&t=${Math.floor(startAt)}`
+
 // Cinezo: our purple/pink, autoplay (the viewer just pressed Play)
 const CINEZO_PARAMS = "?primarycolor=6c63ff&secondarycolor=f72585&autoplay=true"
 
@@ -108,6 +120,8 @@ export function movieServers(tmdbId: number, imdbId?: string | null, startAt = 0
   const servers: Server[] = [
     { name: "Cinezo", src: `https://player.cinezo.live/embed/movie/${tmdbId}${CINEZO_PARAMS}`, sandbox: true, events: CINEZO_EVENTS },
     { name: "CineSrc", src: `https://cinesrc.st/embed/movie/${tmdbId}?${cinesrcParams(startAt)}`, sandbox: true, events: CINESRC_EVENTS },
+    // Must stay sandboxed: its page loads pop-under ad scripts
+    { name: "VidSpark", src: `https://vidspark.to/movie/${tmdbId}${vidsparkParams(startAt)}`, sandbox: true, events: VIDSPARK_EVENTS },
     ...streamServers(`/movie/${tmdbId}`, startAt),
   ]
   servers.push({ name: "Luna", src: `https://primeflix.ru/player/movie/${tmdbId}`, sandbox: true })
@@ -129,6 +143,12 @@ export function tvServers(tmdbId: number, season: number, episode: number, imdbI
       src: `https://cinesrc.st/embed/tv/${tmdbId}?s=${season}&e=${episode}&autonext=false&${cinesrcParams(startAt)}`,
       sandbox: true,
       events: CINESRC_EVENTS,
+    },
+    {
+      name: "VidSpark",
+      src: `https://vidspark.to/tv/${tmdbId}/${season}/${episode}${vidsparkParams(startAt)}`,
+      sandbox: true,
+      events: VIDSPARK_EVENTS,
     },
     ...streamServers(`/tv/${tmdbId}/${season}/${episode}`, startAt),
   ]
