@@ -3,7 +3,8 @@
 
 import { formatReleaseDate, isReleased, todayISO } from "./media"
 
-export type DetailRow = { label: string; value: string }
+// `people`: when the value is a list of names (directors, writers…), who they are, to link their pages
+export type DetailRow = { label: string; value: string; people?: { id: number; name: string }[] }
 export type Company = { id: number; name: string; logo_path?: string | null }
 export type StatusTone = "good" | "neutral" | "bad"
 
@@ -65,6 +66,10 @@ export const formatDate = (date?: string, opts: Intl.DateTimeFormatOptions = { d
 const joinNames = (people: any[], max = 4) =>
   [...new Set(people.map((p) => p.name))].slice(0, max).join(", ") || null
 
+// The same people, once each, for linking
+const uniquePeople = (people: any[], max = 4) =>
+  people.filter((p, i) => p.id && people.findIndex((q) => q.id === p.id) === i).slice(0, max).map((p) => ({ id: p.id, name: p.name }))
+
 export function tvStatus(status?: string): { label: string; tone: StatusTone } | null {
   if (!status) return null
   if (status === "Returning Series") return { label: "Returning Series", tone: "good" }
@@ -73,8 +78,10 @@ export function tvStatus(status?: string): { label: string; tone: StatusTone } |
   return { label: status, tone: "neutral" } // In Production, Planned, Pilot
 }
 
-const rows = (list: [string, string | null | undefined][]): DetailRow[] =>
-  list.filter((r): r is [string, string] => !!r[1]).map(([label, value]) => ({ label, value }))
+const rows = (list: ([string, string | null | undefined] | [string, string | null | undefined, any[]])[]): DetailRow[] =>
+  list
+    .filter((r) => !!r[1])
+    .map(([label, value, people]) => ({ label, value: value!, ...(people?.length && { people: uniquePeople(people) }) }))
 
 export function movieDetails(m: any): { rows: DetailRow[]; companies: Company[] } {
   const crew: any[] = m?.credits?.crew ?? []
@@ -82,8 +89,8 @@ export function movieDetails(m: any): { rows: DetailRow[]; companies: Company[] 
   const writers = crew.filter((c) => c.department === "Writing")
   return {
     rows: rows([
-      [directors.length > 1 ? "Directors" : "Directed by", joinNames(directors)],
-      ["Written by", joinNames(writers)],
+      [directors.length > 1 ? "Directors" : "Directed by", joinNames(directors), directors],
+      ["Written by", joinNames(writers), writers],
       ["Released", formatDate(m?.release_date)],
       ["Runtime", formatRuntime(m?.runtime)],
       ["Language", languageName(m?.original_language)],
@@ -110,7 +117,7 @@ export function tvDetails(tv: any): { rows: DetailRow[]; companies: Company[] } 
     : tv?.last_episode_to_air?.runtime ?? null
   return {
     rows: rows([
-      ["Created by", joinNames(tv?.created_by ?? [])],
+      ["Created by", joinNames(tv?.created_by ?? []), tv?.created_by ?? []],
       ["Status", tvStatus(tv?.status)?.label],
       ["Next episode", episodeLine(tv?.next_episode_to_air)],
       ["Last aired", tv?.next_episode_to_air ? null : episodeLine(tv?.last_episode_to_air)],

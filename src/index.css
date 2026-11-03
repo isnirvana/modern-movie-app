@@ -87,13 +87,47 @@ body {
   .skeleton {
     background: linear-gradient(90deg, #1a1a26 25%, #22223a 50%, #1a1a26 75%);
     background-size: 200% 100%;
-    animation: shimmer 2s infinite linear;
+    animation: lumo-shimmer 2s infinite linear;
+  }
+
+  /* Text and buttons in a page placeholder: a step lighter, so they read on the hero's dark backdrop */
+  .skeleton-bar {
+    background: linear-gradient(90deg, #1e1e2c 25%, #2a2a40 50%, #1e1e2c 75%);
+    background-size: 200% 100%;
+    animation: lumo-shimmer 2s infinite linear;
+  }
+
+  /* A hero waiting for its picture: dark, with a faint brand glow and a slow shine passing over */
+  .skeleton-hero {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 70% 60% at 72% 28%, rgba(108, 99, 255, 0.13), transparent 70%),
+      radial-gradient(ellipse 50% 40% at 90% 70%, rgba(247, 37, 133, 0.06), transparent 70%),
+      linear-gradient(to bottom, #15151f, #0a0a0f);
+  }
+  .skeleton-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.04) 50%, transparent 65%);
+    background-size: 250% 100%;
+    animation: lumo-shimmer 2.6s infinite linear;
   }
 
   .section-heading {
     @apply text-xl font-bold tracking-wide;
     font-family: "Plus Jakarta Sans", sans-serif;
   }
+}
+
+/* The placeholders' shine (defined here: Tailwind only outputs its own keyframes when an animate-* class uses them) */
+@keyframes lumo-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton, .skeleton-bar, .skeleton-hero::after { animation: none; }
 }
 
 /* Our own player (Vidstack): fill the player area instead of its own 16:9 box, in Lumo colours */
@@ -106,6 +140,9 @@ body {
   border-radius: 0;
   --video-brand: #6c63ff;
   --video-focus-ring-color: #6c63ff;
+  /* No frame line around the video: it sits edge to edge (PlayerModal) */
+  --video-border: none;
+  --video-border-radius: 0;
 }
 .lumo-player [data-media-provider],
 .lumo-player video {
@@ -113,6 +150,24 @@ body {
   height: 100%;
   object-fit: contain;
 }
+/* PlayerModal's video frame. A small one (a phone held upright) gets compact loading and error screens:
+   a smaller ring and gaps, and the extras (subtitle, progress bar, status line) left out */
+.player-frame {
+  container-type: size;
+}
+@container (max-height: 260px) {
+  .player-frame .stream-ring {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  .player-frame .player-extra {
+    display: none;
+  }
+  .player-frame .gap-4 {
+    gap: 0.6rem;
+  }
+}
+
 /* HeroTrailer: a 16:9 video covering its box at any shape (like object-fit: cover),
    zoomed a little so YouTube's edges and title bar stay out of view */
 .trailer-box {

@@ -1,5 +1,7 @@
 // src/components/CastCarousel.tsx
+// The cast of a title; each opens that person's page (pages/PersonPage.tsx)
 import { useRef } from "react"
+import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
@@ -49,17 +51,24 @@ export default function CastCarousel({ cast }: { cast: CastMember[] }) {
             transition={{ delay: i * 0.04, duration: 0.35 }}
             className="flex-shrink-0 w-24 text-center group/card"
           >
-            <div className="relative mx-auto w-20 h-20 mb-2">
-              <img
-                src={`https://image.tmdb.org/t/p/w185${c.profile_path}`}
-                alt={c.name}
-                className="w-full h-full object-cover rounded-full ring-2 ring-surface-3 group-hover/card:ring-primary transition-all duration-300"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 rounded-full bg-gradient-to-t from-black/30 to-transparent" />
-            </div>
-            <p className="text-xs font-semibold text-white truncate px-1">{c.name}</p>
-            <p className="text-[10px] text-gray-500 truncate px-1 mt-0.5">{c.character}</p>
+            <Link
+              to={`/person/${c.id}`}
+              className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <div className="relative mx-auto w-20 h-20 mb-2">
+                <img
+                  src={`https://image.tmdb.org/t/p/w185${c.profile_path}`}
+                  alt={c.name}
+                  className="w-full h-full object-cover rounded-full ring-2 ring-surface-3 group-hover/card:ring-primary transition-all duration-300"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-t from-black/30 to-transparent" />
+              </div>
+              <p className="text-xs font-semibold text-white truncate px-1 group-hover/card:text-primary transition-colors">
+                {c.name}
+              </p>
+              <p className="text-[10px] text-gray-500 truncate px-1 mt-0.5">{c.character}</p>
+            </Link>
           </motion.div>
         ))}
       </div>

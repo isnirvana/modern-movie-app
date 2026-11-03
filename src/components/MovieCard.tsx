@@ -14,6 +14,8 @@ interface Movie {
   media_type?: string
   release_date?: string
   first_air_date?: string
+  // Known to be out though no date came with it (e.g. Popular on Lumoflix, built from watch history)
+  released?: boolean
 }
 
 export default function MovieCard({ movie }: { movie: Movie }) {
@@ -22,7 +24,7 @@ export default function MovieCard({ movie }: { movie: Movie }) {
   const date = movie.release_date || movie.first_air_date
   const year = date ? date.slice(0, 4) : null
   // Not out yet: badge it and show the date instead of the year, with no Play hint
-  const upcoming = !isReleased(movie)
+  const upcoming = movie.released === undefined ? !isReleased(movie) : !movie.released
   const [imgError, setImgError] = useState(false)
 
   return (

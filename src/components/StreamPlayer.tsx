@@ -138,7 +138,7 @@ export default function StreamPlayer({ server, api, subtitlesApi, startAt, title
                   </div>
                   <div>
                     <p className="text-base md:text-lg font-semibold text-white">{error}</p>
-                    <p className="mt-1 text-sm text-gray-400">Another server should have it.</p>
+                    <p className="player-extra mt-1 text-sm text-gray-400">Another server should have it.</p>
                   </div>
                   {fallback && (
                     <button
@@ -155,10 +155,10 @@ export default function StreamPlayer({ server, api, subtitlesApi, startAt, title
                   <div className="min-w-0 max-w-md">
                     <p className="text-[10px] uppercase tracking-[0.25em] text-primary font-semibold">{server}</p>
                     <p className="mt-1 text-lg md:text-2xl font-bold text-white truncate">{title}</p>
-                    {subtitle && <p className="mt-0.5 text-xs md:text-sm text-gray-400 truncate">{subtitle}</p>}
+                    {subtitle && <p className="player-extra mt-0.5 text-xs md:text-sm text-gray-400 truncate">{subtitle}</p>}
                   </div>
-                  <div className="stream-bar w-40 h-[3px] rounded-full bg-white/10 overflow-hidden" />
-                  <p className="text-xs text-gray-400">
+                  <div className="player-extra stream-bar w-40 h-[3px] rounded-full bg-white/10 overflow-hidden" />
+                  <p className="player-extra text-xs text-gray-400">
                     {state.status === "loading" ? "Finding the best stream…" : startAt > 0 ? "Picking up where you left off…" : "Starting playback…"}
                   </p>
                   {slow && fallback && (

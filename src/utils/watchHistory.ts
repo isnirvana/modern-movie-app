@@ -22,7 +22,7 @@ export type HistoryEntry = {
 
 const STORAGE_KEY = "lumo:history" // per profile (see profiles.ts)
 const CHANGE_EVENT = "lumo:history-change"
-const MAX_ENTRIES = 50
+const MAX_ENTRIES = 100
 // Past this point a title counts as finished
 const FINISHED_RATIO = 0.95
 
@@ -71,6 +71,9 @@ export function getEntry(type: MediaType, id: number) {
 export const isFinished = (e: Pick<HistoryEntry, "time" | "duration">) =>
   e.duration > 0 && e.time / e.duration >= FINISHED_RATIO
 
+// What Continue Watching shows: everything but finished movies
+export const inProgress = (entries: HistoryEntry[]) => entries.filter((e) => !(e.type === "movie" && isFinished(e)))
+
 export function saveProgress(entry: Omit<HistoryEntry, "updatedAt">) {
   if (!entry.duration || entry.duration <= 0) return
   // Ignore the first seconds (and the 0:00 "play" event sent before a resume seek), so they never overwrite real progress
@@ -81,11 +84,8 @@ export function saveProgress(entry: Omit<HistoryEntry, "updatedAt">) {
     markEpisodeWatched(entry.id, entry.season, entry.episode)
   }
 
-  // A finished movie leaves Continue Watching; a finished episode stays so the show can be picked up again
-  if (entry.type === "movie" && isFinished(entry)) {
-    write(others)
-    return
-  }
+  // A finished movie stays in the history (it's the best clue to what the profile likes, and keeps it out of
+  // recommendations) but leaves Continue Watching (inProgress); a finished episode stays so the show can be picked up again
   write([{ ...entry, updatedAt: Date.now() }, ...others])
 }
 

@@ -35,11 +35,18 @@ const PROFILES: Kind = {
   perProfile: false,
   keyColumns: ["id"],
   local: () =>
-    getProfilesState().list.map((p) => ({ id: p.id, name: p.name, color: p.color, kids: p.kids, pin: orNull(p.pin) })),
+    getProfilesState().list.map((p) => ({
+      id: p.id,
+      name: p.name,
+      color: p.color,
+      kids: p.kids,
+      pin: orNull(p.pin),
+      avatar: orNull(p.avatar), // supabase/avatars.sql
+    })),
   apply: (rows) => {
     // The first profile first, then in order of creation (ids are timestamps)
     const list: Profile[] = rows
-      .map((r) => ({ id: r.id, name: r.name, color: r.color, kids: r.kids, pin: orUndefined(r.pin) }))
+      .map((r) => ({ id: r.id, name: r.name, color: r.color, kids: r.kids, pin: orUndefined(r.pin), avatar: orUndefined(r.avatar) }))
       .sort((a, b) => (a.id === MAIN_ID ? -1 : b.id === MAIN_ID ? 1 : a.id.localeCompare(b.id)))
     // The profile in use was deleted on another device: start over on the first profile
     if (!replaceProfiles(list)) window.location.assign("/")
@@ -223,9 +230,12 @@ async function pull(kind: Kind, uid: string, profileId: string) {
 // --- Session & scheduling ---
 
 let session: Session | null = null
+// False until Supabase has said whether there's a saved session (so nothing shows "Sign in" to a signed-in viewer)
+let sessionKnown = false
 const sessionListeners = new Set<() => void>()
 
 export const getSession = () => session
+export const isSessionKnown = () => sessionKnown
 export function subscribeSession(callback: () => void) {
   sessionListeners.add(callback)
   return () => sessionListeners.delete(callback)
@@ -284,6 +294,7 @@ export function startSync() {
 
   supabase.auth.onAuthStateChange((event, s) => {
     session = s
+    sessionKnown = true
     sessionListeners.forEach((l) => l())
     if (s && (event === "INITIAL_SESSION" || event === "SIGNED_IN")) {
       // Then (profiles being on the server) hand notifications to the server for the profile in use

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { motion, AnimatePresence, useDragControls } from "framer-motion"
-import { Home, Film, Tv, Search, Compass, Bookmark, Download, X, ChevronRight } from "lucide-react"
+import { Home, Film, Tv, Search, Compass, Bookmark, Download, X, ChevronRight, Sparkles } from "lucide-react"
 import { useGenres } from "../hooks/useGenres"
 import { useInstallPrompt } from "../hooks/useInstallPrompt"
 import MediaTypeToggle from "./MediaTypeToggle"
@@ -11,7 +11,7 @@ import { genrePath, type MediaType } from "../utils/genres"
 
 const tabs = [
   { to: "/", label: "Home", icon: Home },
-  { to: "/movies", label: "Movies", icon: Film },
+  { to: "/for-you", label: "For You", icon: Sparkles },
   { to: "/my-list", label: "My List", icon: Bookmark },
   { to: "/search", label: "Search", icon: Search },
 ]
@@ -43,7 +43,7 @@ export default function BottomNav() {
   const isActive = (to: string) =>
     to === "/" ? location.pathname === "/" : location.pathname.startsWith(to)
   // Browse covers the sheet and the pages it leads to
-  const browseActive = sheetOpen || location.pathname.startsWith("/genre/") || location.pathname === "/tv"
+  const browseActive = sheetOpen || location.pathname.startsWith("/genre/") || location.pathname === "/tv" || location.pathname === "/movies"
 
   const tabClass = (active: boolean) =>
     `relative flex-1 flex flex-col items-center justify-center gap-1 h-16 text-[10px] font-medium transition-colors select-none ${
