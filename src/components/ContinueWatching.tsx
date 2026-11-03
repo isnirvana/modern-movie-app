@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, Play, X } from "lucide-react"
 import { useWatchHistory } from "../hooks/useWatchHistory"
-import { removeEntry, isFinished, formatTime, type HistoryEntry } from "../utils/watchHistory"
+import { removeEntry, isFinished, inProgress, formatTime, type HistoryEntry } from "../utils/watchHistory"
 
 function caption(e: HistoryEntry) {
   if (e.duration === 0) return `S${e.season} E${e.episode} · Up next`
@@ -15,7 +15,7 @@ function caption(e: HistoryEntry) {
 }
 
 export default function ContinueWatching() {
-  const history = useWatchHistory()
+  const history = inProgress(useWatchHistory())
   const scrollRef = useRef<HTMLDivElement>(null)
   const sectionRef = useRef<HTMLElement>(null)
   const { hash } = useLocation()

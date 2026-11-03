@@ -12,7 +12,9 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { networkMode: 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      {/* Navigations as React transitions: the current page stays up while the next one's code loads,
+          instead of flashing the loading placeholder */}
+      <BrowserRouter future={{ v7_startTransition: true }}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>

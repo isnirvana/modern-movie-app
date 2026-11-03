@@ -2,8 +2,9 @@
 // Viewer profiles on this device ("Me", "Kids", …), each with its own My List, history and searches.
 // The first profile keeps the original storage keys, so data from before profiles existed stays with it.
 
-// `pin`: hash of the profile lock's PIN, when it has one
-export type Profile = { id: string; name: string; color: string; kids: boolean; pin?: string }
+// `pin`: hash of the profile lock's PIN, when it has one. `avatar`: the TMDB photo it picked (an actor's or
+// director's image path), shown instead of the colour and initial.
+export type Profile = { id: string; name: string; color: string; kids: boolean; pin?: string; avatar?: string }
 
 type State = { list: Profile[]; active: string }
 
@@ -60,9 +61,9 @@ export function profileKey(base: string) {
   return id === MAIN_ID ? base : `${base}:${id}`
 }
 
-export function addProfile(name: string, kids: boolean, color: string): Profile {
+export function addProfile(name: string, kids: boolean, color: string, avatar?: string): Profile {
   const state = getProfilesState()
-  const profile = { id: `p-${Date.now().toString(36)}`, name, color, kids }
+  const profile = { id: `p-${Date.now().toString(36)}`, name, color, kids, ...(avatar && { avatar }) }
   write({ ...state, list: [...state.list, profile] })
   return profile
 }

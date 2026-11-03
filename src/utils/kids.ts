@@ -61,6 +61,11 @@ export function installKidsFilter(instance: AxiosInstance) {
     // Title details carry their recommendations along
     if (data.recommendations) data.recommendations.results = keepKidSafe(data.recommendations.results)
     if (data.similar) data.similar.results = keepKidSafe(data.similar.results)
+    // A person's page: their filmography
+    if (data.combined_credits) {
+      data.combined_credits.cast = keepKidSafe(data.combined_credits.cast)
+      data.combined_credits.crew = keepKidSafe(data.combined_credits.crew)
+    }
     return res
   })
 }

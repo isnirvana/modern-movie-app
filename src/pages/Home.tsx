@@ -37,9 +37,11 @@ import MediaRow from "../components/MediaRow"
 import ContinueWatching from "../components/ContinueWatching"
 import Top10Row from "../components/Top10Row"
 import BecauseYouWatched from "../components/BecauseYouWatched"
+import TopPicks from "../components/TopPicks"
+import PopularOnLumoflix from "../components/PopularOnLumoflix"
 import { usePersonalRows } from "../hooks/usePersonalRows"
 import { useMyList } from "../hooks/useMyList"
-import LoadingSkeleton from "../components/LoadingSkeleton"
+import { HomeSkeleton } from "../components/PageSkeletons"
 import { useTrending } from "../hooks/useTrending"
 import { useTmdbList } from "../hooks/useTmdbList"
 import { todayISO } from "../utils/media"
@@ -80,7 +82,7 @@ export default function Home() {
 
   if (!data) {
     // still loading first page
-    return <LoadingSkeleton />
+    return <HomeSkeleton />
   }
 
   return (
@@ -92,10 +94,12 @@ export default function Home() {
         <Top10Row title="Top 10 Movies Today" items={topMovies.data ?? []} isLoading={topMovies.isLoading} />
         <MediaRow title="My List" items={myList.map((i) => ({ ...i, media_type: i.type }))} to="/my-list" />
         {seed1 && <BecauseYouWatched key={`${seed1.type}-${seed1.id}`} seed={seed1} exclude={exclude} />}
+        <TopPicks />
         <MediaRow title="Now Playing" items={nowPlaying.data ?? []} isLoading={nowPlaying.isLoading} />
         <MediaRow title="Popular Movies" items={popularMovies.data ?? []} isLoading={popularMovies.isLoading} to="/movies" />
         <Top10Row title="Top 10 Shows Today" items={topShows.data ?? []} isLoading={topShows.isLoading} />
         <MediaRow title="Popular TV Shows" items={popularTV.data ?? []} isLoading={popularTV.isLoading} to="/tv" />
+        <PopularOnLumoflix />
         {seed2 && <BecauseYouWatched key={`${seed2.type}-${seed2.id}`} seed={seed2} exclude={exclude} />}
         <MediaRow title="Top Rated" items={topRated.data ?? []} isLoading={topRated.isLoading} />
         <MediaRow title="Coming Soon" items={comingSoon} isLoading={upcomingMovies.isLoading && upcomingTV.isLoading} />

@@ -1,5 +1,7 @@
 // src/components/DetailsSection.tsx
 // "Details": label/value facts plus studio or network logos
+import { Fragment } from "react"
+import { Link } from "react-router-dom"
 import type { Company, DetailRow, StatusTone } from "../utils/details"
 
 type Props = {
@@ -22,7 +24,19 @@ export default function DetailsSection({ rows, companies, companiesLabel }: Prop
         {rows.map((r) => (
           <div key={r.label} className="flex gap-4 py-3 border-b border-white/[0.06]">
             <dt className="w-32 flex-shrink-0 text-sm text-gray-500">{r.label}</dt>
-            <dd className="text-sm text-gray-200 min-w-0">{r.value}</dd>
+            <dd className="text-sm text-gray-200 min-w-0">
+              {/* Directors, writers, creators: each name opens their page */}
+              {r.people
+                ? r.people.map((p, i) => (
+                    <Fragment key={p.id}>
+                      {i > 0 && ", "}
+                      <Link to={`/person/${p.id}`} className="underline decoration-white/25 underline-offset-4 hover:text-primary hover:decoration-primary transition-colors">
+                        {p.name}
+                      </Link>
+                    </Fragment>
+                  ))
+                : r.value}
+            </dd>
           </div>
         ))}
       </dl>

@@ -5,7 +5,8 @@ import HeroCarousel from "../components/HeroCarousel"
 import MediaRow from "../components/MediaRow"
 import ContinueWatching from "../components/ContinueWatching"
 import BecauseYouWatched from "../components/BecauseYouWatched"
-import LoadingSkeleton from "../components/LoadingSkeleton"
+import TopPicks from "../components/TopPicks"
+import { HomeSkeleton } from "../components/PageSkeletons"
 import { useTmdbList } from "../hooks/useTmdbList"
 import { useMyList } from "../hooks/useMyList"
 import { usePersonalRows } from "../hooks/usePersonalRows"
@@ -22,7 +23,7 @@ export default function KidsHome() {
   const myList = useMyList()
   const { seeds: [seed1, seed2], exclude } = usePersonalRows()
 
-  if (!familyMovies.data) return <LoadingSkeleton />
+  if (!familyMovies.data) return <HomeSkeleton />
 
   return (
     <>
@@ -33,6 +34,7 @@ export default function KidsHome() {
         <MediaRow title="Kids TV" items={kidsTV.data ?? []} isLoading={kidsTV.isLoading} />
         <MediaRow title="My List" items={myList.map((i) => ({ ...i, media_type: i.type }))} to="/my-list" />
         {seed1 && <BecauseYouWatched key={`${seed1.type}-${seed1.id}`} seed={seed1} exclude={exclude} />}
+        <TopPicks />
         <MediaRow title="Family Movies" items={familyMovies.data.slice(6)} />
         <MediaRow title="Animated Movies" items={animatedMovies.data ?? []} isLoading={animatedMovies.isLoading} />
         <MediaRow title="Cartoons" items={animatedTV.data ?? []} isLoading={animatedTV.isLoading} />

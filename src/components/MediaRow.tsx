@@ -6,13 +6,15 @@ import MovieCard from "./MovieCard"
 
 interface MediaRowProps {
   title: string
+  // Small label above the title, e.g. "Because you watched" over the title it's based on
+  kicker?: string
   items: Array<{ id: number; media_type?: string; [key: string]: any }>
   isLoading?: boolean
   // Optional "See all" link shown next to the title
   to?: string
 }
 
-export default function MediaRow({ title, items, isLoading, to }: MediaRowProps) {
+export default function MediaRow({ title, kicker, items, isLoading, to }: MediaRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const scroll = (dir: "left" | "right") => {
@@ -26,13 +28,19 @@ export default function MediaRow({ title, items, isLoading, to }: MediaRowProps)
   return (
     <section className="py-5 md:py-6">
       {/* Section header */}
-      <div className="flex items-center justify-between px-5 md:px-12 mb-4">
-        <div className="flex items-center gap-3">
-          <span className="w-1 h-6 rounded-full bg-gradient-to-b from-primary to-accent" />
-          <h2 className="section-heading">{title}</h2>
+      <div className="flex items-center justify-between gap-4 px-5 md:px-12 mb-4">
+        {/* Long titles stay on one line (cut short with …) rather than wrapping into the See all link */}
+        <div className="flex items-stretch gap-3 min-w-0">
+          <span className={`w-1 shrink-0 rounded-full bg-gradient-to-b from-primary to-accent ${kicker ? "" : "h-6 self-center"}`} />
+          <div className="min-w-0">
+            {kicker && (
+              <p className="text-[11px] uppercase tracking-[0.14em] font-semibold text-gray-500 leading-none mb-1.5">{kicker}</p>
+            )}
+            <h2 className="section-heading truncate leading-tight" title={title}>{title}</h2>
+          </div>
         </div>
         {to && (
-          <Link to={to} className="flex items-center gap-1 text-xs text-gray-400 hover:text-primary transition-colors font-medium">
+          <Link to={to} className="shrink-0 flex items-center gap-1 text-xs text-gray-400 hover:text-primary transition-colors font-medium">
             See all <ChevronRight size={14} />
           </Link>
         )}
@@ -43,7 +51,7 @@ export default function MediaRow({ title, items, isLoading, to }: MediaRowProps)
         <button
           onClick={() => scroll("left")}
           className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full glass items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-card hover:bg-primary/30"
-          aria-label={`Scroll ${title} left`}
+          aria-label={`Scroll ${kicker ? `${kicker} ` : ""}${title} left`}
         >
           <ChevronLeft size={20} />
         </button>
@@ -73,7 +81,7 @@ export default function MediaRow({ title, items, isLoading, to }: MediaRowProps)
         <button
           onClick={() => scroll("right")}
           className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full glass items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-card hover:bg-primary/30"
-          aria-label={`Scroll ${title} right`}
+          aria-label={`Scroll ${kicker ? `${kicker} ` : ""}${title} right`}
         >
           <ChevronRight size={20} />
         </button>

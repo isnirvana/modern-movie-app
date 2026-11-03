@@ -1,8 +1,9 @@
 // src/components/NavBar.tsx
-// Top bar. On phones it only shows the logo — navigation lives in BottomNav.
+// Top bar. On phones it only shows the logo — navigation lives in BottomNav. `minimal`: the logo alone
+// (the profiles screen).
 import { useState, useRef, useEffect } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { ChevronDown, Film, Tv, Layers, Download, Bookmark } from "lucide-react"
+import { ChevronDown, Film, Tv, Layers, Download, Bookmark, Sparkles, LogIn, LogOut, UserCircle, Users } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import SearchTypeahead from "./SearchTypeahead"
 import Logo from "./Logo"
@@ -11,16 +12,16 @@ import { useInstallPrompt } from "../hooks/useInstallPrompt"
 import MediaTypeToggle from "./MediaTypeToggle"
 import ProfileAvatar from "./ProfileAvatar"
 import { useActiveProfile } from "../hooks/useProfiles"
+import { ACCOUNTS_ENABLED, useAccount } from "../hooks/useAccount"
 import { genrePath, type MediaType } from "../utils/genres"
 
-export default function NavBar() {
+export default function NavBar({ minimal = false }: { minimal?: boolean }) {
   const [genresOpen, setGenresOpen] = useState(false)
   const genresRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const [genreType, setGenreType] = useState<MediaType>("movie")
   const { data: genres = [] } = useGenres(genreType)
   const { canInstall, install } = useInstallPrompt()
-  const profile = useActiveProfile()
 
   // Close the genres menu on route change
   useEffect(() => {
@@ -43,12 +44,25 @@ export default function NavBar() {
   }, [genresOpen])
 
   const navLinks = [
+    { to: "/for-you", label: "For You", icon: <Sparkles size={16} /> },
     { to: "/movies", label: "Movies", icon: <Film size={16} /> },
     { to: "/tv", label: "TV Shows", icon: <Tv size={16} /> },
     { to: "/my-list", label: "My List", icon: <Bookmark size={16} /> },
   ]
 
   const isActive = (path: string) => location.pathname === path
+
+  if (minimal) {
+    return (
+      <nav className="fixed top-0 left-0 right-0 z-50">
+        <div className="max-w-screen-2xl mx-auto px-4 md:px-8 py-3 flex items-center">
+          <Link to="/" className="shrink-0" aria-label="Lumo home">
+            <Logo />
+          </Link>
+        </div>
+      </nav>
+    )
+  }
 
   return (
     <nav
@@ -139,17 +153,113 @@ export default function NavBar() {
           </button>
         )}
 
-        {/* Profile (on phones the only thing on the right of the bar) */}
+        {/* Sign in, then the profile & account menu (on phones the only things on the right of the bar) */}
+        <div className="ml-auto md:ml-0 shrink-0 flex items-center gap-2">
+          <AccountMenu />
+        </div>
+      </div>
+    </nav>
+  )
+}
+
+function AccountMenu() {
+  const profile = useActiveProfile()
+  const { known, email } = useAccount()
+  const location = useLocation()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  // Kids profiles don't get account controls (kids shouldn't sign the account out)
+  const accounts = ACCOUNTS_ENABLED && !profile.kids
+  const showSignIn = accounts && known && !email && location.pathname !== "/account"
+
+  useEffect(() => setOpen(false), [location.pathname])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false)
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("keydown", onKey)
+    document.addEventListener("mousedown", onClick)
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      document.removeEventListener("mousedown", onClick)
+    }
+  }, [open])
+
+  const itemClass = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-200 hover:text-white hover:bg-white/[0.07] transition-colors text-left"
+
+  return (
+    <>
+      {showSignIn && (
         <Link
-          to="/profiles"
-          className="ml-auto md:ml-0 shrink-0 flex items-center gap-2 rounded-lg p-1 hover:bg-white/10 transition-colors"
-          aria-label={`${profile.name}'s profile · switch profile`}
-          title="Switch profile"
+          to="/account"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-semibold text-white bg-gradient-to-r from-primary to-primary-dark shadow-glow hover:brightness-110 transition"
+        >
+          <LogIn size={15} /> Sign in
+        </Link>
+      )}
+      <div className="relative" ref={ref}>
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-2 rounded-lg p-1 hover:bg-white/10 transition-colors"
+          aria-label={`${profile.name}'s profile · account menu`}
+          aria-expanded={open}
+          aria-haspopup="menu"
         >
           <ProfileAvatar profile={profile} size={30} />
           {profile.kids && <span className="text-xs font-bold tracking-wide text-primary pr-1">KIDS</span>}
-        </Link>
+          <ChevronDown size={14} className={`hidden md:block text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              role="menu"
+              initial={{ opacity: 0, y: -8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 top-full mt-2 w-64 rounded-xl shadow-card p-2 z-50 origin-top-right"
+              style={{ background: "#16161f", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <div className="flex items-center gap-3 px-3 py-2.5">
+                <ProfileAvatar profile={profile} size={36} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold truncate">{profile.name}</p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {!accounts ? (profile.kids ? "Kids profile" : "On this device") : email ?? "Not signed in"}
+                  </p>
+                </div>
+              </div>
+              <div className="h-px bg-white/[0.07] my-1.5" />
+              <Link to="/profiles" role="menuitem" className={itemClass}>
+                <Users size={16} className="text-gray-400" /> Switch profile
+              </Link>
+              {accounts && email && (
+                <>
+                  <Link to="/account" role="menuitem" className={itemClass}>
+                    <UserCircle size={16} className="text-gray-400" /> Account
+                  </Link>
+                  <button
+                    role="menuitem"
+                    onClick={() => import("../utils/sync").then((sync) => sync.signOut())}
+                    className={itemClass}
+                  >
+                    <LogOut size={16} className="text-gray-400" /> Sign out
+                  </button>
+                </>
+              )}
+              {accounts && !email && (
+                <Link to="/account" role="menuitem" className={`${itemClass} text-primary`}>
+                  <LogIn size={16} /> Sign in or create account
+                </Link>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </nav>
+    </>
   )
 }

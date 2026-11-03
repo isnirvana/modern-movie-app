@@ -7,5 +7,7 @@ import { withoutExcluded, type Seed } from "../utils/recommend"
 
 export default function BecauseYouWatched({ seed, exclude }: { seed: Seed; exclude: Set<string> }) {
   const { data = [], isLoading } = useTmdbList(`/${seed.type}/${seed.id}/recommendations`, seed.type)
-  return <MediaRow title={`Because you watched ${seed.title}`} items={withoutExcluded(data, exclude)} isLoading={isLoading} />
+  return (
+    <MediaRow kicker="Because you watched" title={seed.title} items={withoutExcluded(data, exclude)} isLoading={isLoading} />
+  )
 }

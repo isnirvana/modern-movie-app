@@ -44,6 +44,17 @@ export const fetchTitleExtras = (type: "movie" | "tv", id: number) =>
     .get(`/${type}/${id}`, { params: { append_to_response: "videos,images", include_image_language: LOGO_LANGUAGES } })
     .then((res) => res.data)
 
+// A title's details on their own (genres etc.), without the extras
+export const fetchTitle = (type: "movie" | "tv", id: number) => api.get(`/${type}/${id}`).then((res) => res.data)
+
+// A person (actor, director…) with their filmography and links (IMDb, Instagram…)
+export const fetchPerson = (id: number) =>
+  api.get(`/person/${id}`, { params: { append_to_response: "combined_credits,external_ids" } }).then((res) => res.data)
+
+// People with a photo, from a TMDB people list (/person/popular, /search/person…)
+export const fetchPeople = (path: string, params: Record<string, string | number> = {}) =>
+  api.get(path, { params }).then((res) => (res.data.results ?? []).filter((p: any) => p.profile_path))
+
 // Fetch movie details + credits
 export const fetchMovieDetails = (id: number) =>
   api
