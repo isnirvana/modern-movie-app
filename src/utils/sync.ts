@@ -12,6 +12,8 @@ import { getMyList, replaceMyList, subscribeMyList, type ListItem } from "./myLi
 import { getHistory, replaceHistory, subscribe as subscribeHistory, type HistoryEntry } from "./watchHistory"
 import { getWatched, replaceWatched, subscribeWatched, type Watched } from "./watchedEpisodes"
 import { getActiveProfile, getProfilesState, replaceProfiles, subscribeProfiles, MAIN_ID, type Profile } from "./profiles"
+import { notificationsOn, switchToPushIfSignedIn } from "./notifications"
+import { removePushSubscription } from "./push"
 
 type Row = Record<string, any>
 
@@ -283,7 +285,10 @@ export function startSync() {
   supabase.auth.onAuthStateChange((event, s) => {
     session = s
     sessionListeners.forEach((l) => l())
-    if (s && (event === "INITIAL_SESSION" || event === "SIGNED_IN")) syncNow()
+    if (s && (event === "INITIAL_SESSION" || event === "SIGNED_IN")) {
+      // Then (profiles being on the server) hand notifications to the server for the profile in use
+      syncNow().then(() => notificationsOn() && switchToPushIfSignedIn())
+    }
   })
   for (const kind of [PROFILES, ...PER_PROFILE]) kind.subscribe(() => session && !applying && scheduleSync())
   // Catch up when the app comes back, send what's pending when it goes away
@@ -316,6 +321,8 @@ function clearAccountData() {
 
 export async function signOut() {
   await syncNow()
+  // This device stops getting the account's notifications (it falls back to its own checks)
+  await removePushSubscription().catch(() => {})
   await supabase!.auth.signOut()
   clearAccountData()
 }

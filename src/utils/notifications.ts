@@ -1,12 +1,15 @@
 // src/utils/notifications.ts
 // New-episode notifications, app side: turning them on and off, and keeping the service worker's list of
 // titles to watch in step with My List and Continue Watching. The checks themselves run in the worker.
+// Signed in, the server sends them instead (push.ts, supabase/functions/notify) and the worker's checks rest.
 
 import { getMyList } from "./myList"
 import { getHistory } from "./watchHistory"
 import { updateState, CHECK_TAG, type Tracked } from "./newReleases"
 
 const ENABLED_KEY = "lumo:notify"
+// Set while the server sends this device's notifications (cleared with the account's data on sign-out)
+const PUSH_KEY = "lumo:notify-push"
 const MAX_TRACKED = 40
 // Shows from Continue Watching to follow (most recent first)
 const HISTORY_SHOWS = 20
@@ -23,6 +26,37 @@ export function notificationsOn() {
   } catch {
     return false
   }
+}
+
+export function pushMode() {
+  try {
+    return localStorage.getItem(PUSH_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+function setPushMode(on: boolean) {
+  try {
+    if (on) localStorage.setItem(PUSH_KEY, "1")
+    else localStorage.removeItem(PUSH_KEY)
+  } catch {
+    // Storage blocked — stays on the worker's checks
+  }
+}
+
+// Signed in: hands this device over to the server's notifications (or back to the worker's if that fails).
+// Also refreshes which profile the device is for, and its time zone.
+export async function switchToPushIfSignedIn() {
+  let ok = false
+  try {
+    ok = await (await import("./push")).savePushSubscription()
+  } catch {
+    // Offline, or push unavailable here
+  }
+  setPushMode(ok)
+  await syncTracked()
+  return ok
 }
 
 const daysAgoISO = (days: number) => new Date(Date.now() - days * 86_400_000).toLocaleDateString("en-CA")
@@ -47,7 +81,7 @@ function trackedTitles(): Tracked[] {
 // Hands the worker the current list (skipped when nothing changed, as progress saves fire often)
 let lastSynced = ""
 export async function syncTracked() {
-  const record = { enabled: notificationsOn(), tracked: trackedTitles() }
+  const record = { enabled: notificationsOn() && !pushMode(), tracked: trackedTitles() }
   const json = JSON.stringify(record)
   if (json === lastSynced) return
   lastSynced = json
@@ -79,7 +113,7 @@ export async function enableNotifications(): Promise<boolean> {
   } catch {
     return false
   }
-  await syncTracked()
+  if (await switchToPushIfSignedIn()) return true
   await registerBackgroundChecks()
   // Notes where each show is now, so only episodes that come out from here on are announced
   await requestCheck(true)
@@ -91,6 +125,10 @@ export async function disableNotifications() {
     localStorage.removeItem(ENABLED_KEY)
   } catch {
     // Storage blocked — the worker is still told below
+  }
+  if (pushMode()) {
+    await (await import("./push")).removePushSubscription().catch(() => {})
+    setPushMode(false)
   }
   await syncTracked()
   const reg: any = await navigator.serviceWorker.getRegistration()
