@@ -13,34 +13,40 @@
 //   );
 // }
 
+import { lazy, Suspense } from "react"
 import { Routes, Route } from "react-router-dom"
 import Layout from "./components/Layout"
 import Home from "./pages/Home"
-import MoviesPage from "./pages/MoviesPage"
-import TVPage from "./pages/TVPage"
-import GenrePage from "./pages/GenrePage"
-import MovieDetail from "./pages/MovieDetail"
-import TVDetails from "./pages/TVDetails"
-import SearchResultsPage from "./pages/SearchResultsPage"
-import NotFound from "./pages/NotFound"
-import MyListPage from "./pages/MyListPage"
 import ErrorBoundary from "./components/ErrorBoundary"
+import LoadingSkeleton from "./components/LoadingSkeleton"
+
+// Other pages load on first visit, keeping the first download small (Home is where most visits start)
+const MoviesPage = lazy(() => import("./pages/MoviesPage"))
+const TVPage = lazy(() => import("./pages/TVPage"))
+const GenrePage = lazy(() => import("./pages/GenrePage"))
+const MovieDetail = lazy(() => import("./pages/MovieDetail"))
+const TVDetails = lazy(() => import("./pages/TVDetails"))
+const SearchResultsPage = lazy(() => import("./pages/SearchResultsPage"))
+const NotFound = lazy(() => import("./pages/NotFound"))
+const MyListPage = lazy(() => import("./pages/MyListPage"))
 
 export default function App() {
   return (
     <ErrorBoundary>
       <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/movies" element={<MoviesPage />} />
-          <Route path="/tv" element={<TVPage />} />
-          <Route path="/genre/:id" element={<GenrePage />} />
-          <Route path="/movie/:id" element={<MovieDetail />} />
-          <Route path="/tv/:id" element={<TVDetails />} />
-          <Route path="/search" element={<SearchResultsPage />} />
-          <Route path="/my-list" element={<MyListPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<LoadingSkeleton />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/movies" element={<MoviesPage />} />
+            <Route path="/tv" element={<TVPage />} />
+            <Route path="/genre/:id" element={<GenrePage />} />
+            <Route path="/movie/:id" element={<MovieDetail />} />
+            <Route path="/tv/:id" element={<TVDetails />} />
+            <Route path="/search" element={<SearchResultsPage />} />
+            <Route path="/my-list" element={<MyListPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </Layout>
     </ErrorBoundary>
   )

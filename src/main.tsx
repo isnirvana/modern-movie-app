@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
 
-const queryClient = new QueryClient();
+// offlineFirst: still ask for data while offline, so the service worker can answer from its cache
+// (the default pauses queries offline, leaving visited pages stuck loading)
+const queryClient = new QueryClient({ defaultOptions: { queries: { networkMode: 'offlineFirst' } } });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

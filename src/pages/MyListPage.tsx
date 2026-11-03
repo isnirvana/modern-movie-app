@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { Bookmark, Plus, X, LayoutGrid, Film, Tv } from "lucide-react"
 import MovieCard from "../components/MovieCard"
+import NotificationsToggle from "../components/NotificationsToggle"
 import { useMyList } from "../hooks/useMyList"
 import { removeFromMyList } from "../utils/myList"
 
@@ -31,9 +32,10 @@ export default function MyListPage() {
           </div>
         </div>
 
-        {list.length > 0 && (
-          <div className="flex items-center gap-2">
-            {filters.map(({ key, label, icon: Icon }) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <NotificationsToggle />
+          {list.length > 0 &&
+            filters.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
@@ -44,8 +46,7 @@ export default function MyListPage() {
                 <Icon size={14} /> {label}
               </button>
             ))}
-          </div>
-        )}
+        </div>
       </div>
 
       {list.length === 0 ? (

@@ -3,15 +3,19 @@ import { ReactNode } from "react"
 import NavBar from "./NavBar"
 import Footer from "./Footer"
 import BottomNav from "./BottomNav"
+import OfflineBanner from "./OfflineBanner"
 import { AnimatePresence, motion } from "framer-motion"
 import { useLocation } from "react-router-dom"
+import { useNotificationChecks } from "../hooks/useNotificationChecks"
 
 export default function Layout({ children }: { children: ReactNode }) {
   const location = useLocation()
+  useNotificationChecks()
 
   return (
     <div className="bg-bg min-h-screen text-white">
       <NavBar />
+      <OfflineBanner />
       {/* Start each new page at the top once the old one has faded out */}
       <AnimatePresence mode="wait" onExitComplete={() => window.scrollTo(0, 0)}>
         <motion.main

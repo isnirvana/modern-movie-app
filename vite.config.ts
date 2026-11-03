@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // Our own worker (src/sw.ts): the caches below plus new-episode notifications
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.svg'],
       manifest: {
@@ -24,43 +28,16 @@ export default defineConfig({
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-      },
-      workbox: {
-        // SPA: serve the app shell for any page URL when offline
-        navigateFallback: '/index.html',
-        // Let crawler files load as themselves, not the app
-        navigateFallbackDenylist: [/^\/robots\.txt$/, /^\/sitemap\.xml$/, /^\/google.*\.html$/],
-        runtimeCaching: [
+        // Long-press the app icon (Android, Windows, macOS)
+        shortcuts: [
           {
-            // Posters & backdrops rarely change — serve from cache first
-            urlPattern: /^https:\/\/image\.tmdb\.org\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'tmdb-images',
-              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
+            name: 'Continue Watching',
+            short_name: 'Continue',
+            url: '/#continue-watching',
+            icons: [{ src: 'shortcut-continue.png', sizes: '96x96', type: 'image/png' }],
           },
-          {
-            // Movie data — fresh when online, last copy when offline
-            urlPattern: /^https:\/\/api\.themoviedb\.org\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'tmdb-api',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts',
-              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
+          { name: 'Search', url: '/search', icons: [{ src: 'shortcut-search.png', sizes: '96x96', type: 'image/png' }] },
+          { name: 'My List', url: '/my-list', icons: [{ src: 'shortcut-my-list.png', sizes: '96x96', type: 'image/png' }] },
         ],
       },
     }),

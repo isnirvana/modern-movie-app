@@ -1,7 +1,7 @@
 // src/components/ContinueWatching.tsx
 // Home row of titles the viewer started, with progress bars. Tapping one resumes playback.
-import { useRef } from "react"
-import { Link } from "react-router-dom"
+import { useEffect, useRef } from "react"
+import { Link, useLocation } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, Play, X } from "lucide-react"
 import { useWatchHistory } from "../hooks/useWatchHistory"
@@ -17,8 +17,16 @@ function caption(e: HistoryEntry) {
 export default function ContinueWatching() {
   const history = useWatchHistory()
   const scrollRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const { hash } = useLocation()
 
-  if (history.length === 0) return null
+  // The app shortcut opens "/#continue-watching": bring the row into view once it's on the page
+  const shown = history.length > 0
+  useEffect(() => {
+    if (shown && hash === "#continue-watching") sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [shown, hash])
+
+  if (!shown) return null
 
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current
@@ -27,7 +35,7 @@ export default function ContinueWatching() {
   }
 
   return (
-    <section className="py-5 md:py-6">
+    <section ref={sectionRef} id="continue-watching" className="py-5 md:py-6 scroll-mt-14">
       <div className="flex items-center gap-3 px-5 md:px-12 mb-4">
         <span className="w-1 h-6 rounded-full bg-gradient-to-b from-primary to-accent" />
         <h2 className="section-heading">Continue Watching</h2>
