@@ -1,5 +1,5 @@
 // src/components/Layout.tsx
-import { ReactNode } from "react"
+import { ReactNode, useEffect } from "react"
 import NavBar from "./NavBar"
 import Footer from "./Footer"
 import BottomNav from "./BottomNav"
@@ -11,6 +11,10 @@ import { useNotificationChecks } from "../hooks/useNotificationChecks"
 export default function Layout({ children }: { children: ReactNode }) {
   const location = useLocation()
   useNotificationChecks()
+  // Accounts & sync load after the first screen (the Supabase client is a sizeable download)
+  useEffect(() => {
+    import("../utils/sync").then((sync) => sync.startSync())
+  }, [])
 
   return (
     <div className="bg-bg min-h-screen text-white">

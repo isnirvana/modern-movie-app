@@ -2,6 +2,7 @@
 // Watch progress, kept in this browser only (no account needed).
 // Filled from the players' progress events (Cinezo, CineSrc); powers Continue Watching and Resume.
 
+import { profileKey } from "./profiles"
 import { markEpisodeWatched } from "./watchedEpisodes"
 
 export type MediaType = "movie" | "tv"
@@ -19,7 +20,7 @@ export type HistoryEntry = {
   updatedAt: number // ms timestamp
 }
 
-const STORAGE_KEY = "lumo:history"
+const STORAGE_KEY = "lumo:history" // per profile (see profiles.ts)
 const CHANGE_EVENT = "lumo:history-change"
 const MAX_ENTRIES = 50
 // Past this point a title counts as finished
@@ -34,7 +35,7 @@ let cachedEntries: HistoryEntry[] = []
 export function getHistory(): HistoryEntry[] {
   let raw: string | null = null
   try {
-    raw = localStorage.getItem(STORAGE_KEY)
+    raw = localStorage.getItem(profileKey(STORAGE_KEY))
   } catch {
     // Storage blocked (private mode etc.) — behave as empty
   }
@@ -53,12 +54,15 @@ function write(entries: HistoryEntry[]) {
   const map: Record<string, HistoryEntry> = {}
   for (const e of entries.slice(0, MAX_ENTRIES)) map[keyOf(e.type, e.id)] = e
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map))
+    localStorage.setItem(profileKey(STORAGE_KEY), JSON.stringify(map))
   } catch {
     return
   }
   window.dispatchEvent(new Event(CHANGE_EVENT))
 }
+
+// Sync (utils/sync.ts): swaps in the account's copy
+export const replaceHistory = (entries: HistoryEntry[]) => write(entries)
 
 export function getEntry(type: MediaType, id: number) {
   return getHistory().find((e) => e.type === type && e.id === id)
@@ -104,7 +108,7 @@ export function resumeTime(entry?: HistoryEntry, season?: number, episode?: numb
 }
 
 export function subscribe(callback: () => void) {
-  const onStorage = (e: StorageEvent) => e.key === STORAGE_KEY && callback()
+  const onStorage = (e: StorageEvent) => e.key === profileKey(STORAGE_KEY) && callback()
   window.addEventListener(CHANGE_EVENT, callback)
   window.addEventListener("storage", onStorage) // other tabs
   return () => {

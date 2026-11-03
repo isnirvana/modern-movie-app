@@ -1,0 +1,9 @@
+<!-- Supabase: Authentication > Emails > Confirm signup (sent the first time someone signs in). Subject: Welcome to Lumoflix: your sign-in code -->
+<div style="font-family:Inter,Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;color:#111">
+  <h2 style="margin:0 0 12px">Welcome to Lumoflix</h2>
+  <p style="margin:0 0 20px;color:#444">Enter this code in the app to finish signing in, or tap the button below.</p>
+  <p style="margin:0 0 8px;color:#444">Your code:</p>
+  <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:0 0 24px">{{ .Token }}</p>
+  <p style="margin:0 0 24px"><a href="{{ .ConfirmationURL }}" style="background:#6c63ff;color:#fff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600">Sign in to Lumoflix</a></p>
+  <p style="margin:0;color:#888;font-size:13px">The code and link work once and expire in an hour. If you didn&#39;t ask to sign in, you can ignore this email.</p>
+</div>

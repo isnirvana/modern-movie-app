@@ -2,11 +2,13 @@
 // Episodes watched to the end, per show, kept in this browser only (no account needed).
 // Separate from watch history, which only keeps the latest episode per show.
 
-const STORAGE_KEY = "lumo:watched"
+import { profileKey } from "./profiles"
+
+const STORAGE_KEY = "lumo:watched" // per profile (see profiles.ts)
 const CHANGE_EVENT = "lumo:watched-change"
 
 // { "1399": ["1-1", "1-2"] }: show id → "season-episode" keys
-type Watched = Record<string, string[]>
+export type Watched = Record<string, string[]>
 
 export const episodeKey = (season: number, episode: number) => `${season}-${episode}`
 
@@ -17,7 +19,7 @@ let cachedWatched: Watched = {}
 export function getWatched(): Watched {
   let raw: string | null = null
   try {
-    raw = localStorage.getItem(STORAGE_KEY)
+    raw = localStorage.getItem(profileKey(STORAGE_KEY))
   } catch {
     // Storage blocked (private mode etc.) — behave as empty
   }
@@ -37,7 +39,17 @@ export function markEpisodeWatched(showId: number, season: number, episode: numb
   const show = all[showId] ?? []
   if (show.includes(key)) return
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...all, [showId]: [...show, key] }))
+    localStorage.setItem(profileKey(STORAGE_KEY), JSON.stringify({ ...all, [showId]: [...show, key] }))
+  } catch {
+    return
+  }
+  window.dispatchEvent(new Event(CHANGE_EVENT))
+}
+
+// Sync (utils/sync.ts): swaps in the account's copy
+export function replaceWatched(watched: Watched) {
+  try {
+    localStorage.setItem(profileKey(STORAGE_KEY), JSON.stringify(watched))
   } catch {
     return
   }
@@ -45,7 +57,7 @@ export function markEpisodeWatched(showId: number, season: number, episode: numb
 }
 
 export function subscribeWatched(callback: () => void) {
-  const onStorage = (e: StorageEvent) => e.key === STORAGE_KEY && callback()
+  const onStorage = (e: StorageEvent) => e.key === profileKey(STORAGE_KEY) && callback()
   window.addEventListener(CHANGE_EVENT, callback)
   window.addEventListener("storage", onStorage) // other tabs
   return () => {

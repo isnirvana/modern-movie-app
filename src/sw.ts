@@ -90,6 +90,29 @@ self.addEventListener("periodicsync", ((event: PeriodicSyncEvent) => {
   if (event.tag === CHECK_TAG) event.waitUntil(notifyNewReleases(false))
 }) as EventListener)
 
+// Server notifications for signed-in viewers (supabase/functions/notify): { title, body, url, tag }
+self.addEventListener("push", (event) => {
+  let note: { title?: string; body?: string; url?: string; tag?: string } = {}
+  try {
+    note = event.data?.json() ?? {}
+  } catch {
+    // Not JSON — show it as the body
+    note = { body: event.data?.text() }
+  }
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(note.title ?? "Lumoflix", {
+        body: note.body,
+        tag: note.tag,
+        icon: "/pwa-192x192.png",
+        badge: "/pwa-64x64.png",
+        data: { url: note.url ?? "/" },
+      }),
+      "setAppBadge" in self.navigator ? self.navigator.setAppBadge(1).catch(() => {}) : undefined,
+    ])
+  )
+})
+
 // Tapping a notification opens its title: in the app window if one is open (its router moves there), else a new one
 self.addEventListener("notificationclick", (event) => {
   event.notification.close()

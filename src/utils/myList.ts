@@ -1,6 +1,8 @@
 // src/utils/myList.ts
 // Titles saved with "+ My List", kept in this browser only (no account needed)
 
+import { profileKey } from "./profiles"
+
 export type MediaType = "movie" | "tv"
 
 export type ListItem = {
@@ -15,7 +17,7 @@ export type ListItem = {
   addedAt: number // ms timestamp
 }
 
-const STORAGE_KEY = "lumo:my-list"
+const STORAGE_KEY = "lumo:my-list" // per profile (see profiles.ts)
 const CHANGE_EVENT = "lumo:my-list-change"
 
 // Cache so repeated reads return the same array (needed by useSyncExternalStore)
@@ -25,7 +27,7 @@ let cachedItems: ListItem[] = []
 export function getMyList(): ListItem[] {
   let raw: string | null = null
   try {
-    raw = localStorage.getItem(STORAGE_KEY)
+    raw = localStorage.getItem(profileKey(STORAGE_KEY))
   } catch {
     // Storage blocked (private mode etc.) — behave as empty
   }
@@ -42,12 +44,15 @@ export function getMyList(): ListItem[] {
 
 function write(items: ListItem[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
+    localStorage.setItem(profileKey(STORAGE_KEY), JSON.stringify(items))
   } catch {
     return
   }
   window.dispatchEvent(new Event(CHANGE_EVENT))
 }
+
+// Sync (utils/sync.ts): swaps in the account's copy
+export const replaceMyList = (items: ListItem[]) => write(items)
 
 export const isInMyList = (type: MediaType, id: number) =>
   getMyList().some((i) => i.type === type && i.id === id)
@@ -62,7 +67,7 @@ export function removeFromMyList(type: MediaType, id: number) {
 }
 
 export function subscribeMyList(callback: () => void) {
-  const onStorage = (e: StorageEvent) => e.key === STORAGE_KEY && callback()
+  const onStorage = (e: StorageEvent) => e.key === profileKey(STORAGE_KEY) && callback()
   window.addEventListener(CHANGE_EVENT, callback)
   window.addEventListener("storage", onStorage) // other tabs
   return () => {

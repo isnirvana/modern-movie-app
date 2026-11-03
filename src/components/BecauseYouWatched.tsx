@@ -1,11 +1,11 @@
 // src/components/BecauseYouWatched.tsx
-// Home row of recommendations for a title the viewer watched (from TMDB, released titles only)
+// Home row of recommendations for a title the viewer watched (from TMDB, released titles only).
+// Leaves out titles they already started.
 import MediaRow from "./MediaRow"
 import { useTmdbList } from "../hooks/useTmdbList"
-import type { HistoryEntry } from "../utils/watchHistory"
+import { withoutExcluded, type Seed } from "../utils/recommend"
 
-export default function BecauseYouWatched({ entry }: { entry: HistoryEntry }) {
-  const { data = [], isLoading } = useTmdbList(`/${entry.type}/${entry.id}/recommendations`, entry.type)
-  const items = data.filter((item: any) => item.poster_path)
-  return <MediaRow title={`Because you watched ${entry.title}`} items={items} isLoading={isLoading} />
+export default function BecauseYouWatched({ seed, exclude }: { seed: Seed; exclude: Set<string> }) {
+  const { data = [], isLoading } = useTmdbList(`/${seed.type}/${seed.id}/recommendations`, seed.type)
+  return <MediaRow title={`Because you watched ${seed.title}`} items={withoutExcluded(data, exclude)} isLoading={isLoading} />
 }

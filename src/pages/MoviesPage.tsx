@@ -2,6 +2,7 @@
 import { useTrending } from "../hooks/useTrending"
 import ContentShelf from "../components/ContentShelf"
 import LoadingSkeleton from "../components/LoadingSkeleton"
+import { isKidsMode } from "../utils/profiles"
 
 export default function MoviesPage() {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -13,7 +14,7 @@ export default function MoviesPage() {
 
   return (
     <ContentShelf
-      title="Trending Movies"
+      title={isKidsMode() ? "Popular Kids Movies" : "Trending Movies"}
       items={movies}
       fetchNextPage={fetchNextPage}
       hasNextPage={hasNextPage}
