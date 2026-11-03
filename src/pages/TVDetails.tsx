@@ -8,6 +8,9 @@ import PlayerModal from "../components/PlayerModal"
 import MobilePlayBar from "../components/MobilePlayBar"
 import VideoRow from "../components/VideoRow"
 import MyListButton from "../components/MyListButton"
+import KidsBlocked from "../components/KidsBlocked"
+import { isKidsMode } from "../utils/profiles"
+import { kidsAllowed, usAgeRating } from "../utils/kids"
 import DetailsSection, { CertBadge, StatusPill } from "../components/DetailsSection"
 import { tvCertification, tvDetails, tvStatus, languageName, nextEpisodeLabel } from "../utils/details"
 import ReleasePill from "../components/ReleasePill"
@@ -86,6 +89,9 @@ export default function TVDetails() {
       </div>
     )
   }
+
+  // Kids profiles: only titles rated for kids
+  if (isKidsMode() && !kidsAllowed("tv", tv)) return <KidsBlocked rating={usAgeRating("tv", tv)} />
 
   const year = tv.first_air_date ? new Date(tv.first_air_date).getFullYear() : null
   const rating = tv.vote_average ?? 0

@@ -1,7 +1,9 @@
 // src/utils/recentSearches.ts
 // The last few searches the viewer acted on (opened a result or pressed Enter), newest first, kept in this browser only
 
-const STORAGE_KEY = "lumo:recent-searches"
+import { profileKey } from "./profiles"
+
+const STORAGE_KEY = "lumo:recent-searches" // per profile (see profiles.ts)
 const CHANGE_EVENT = "lumo:recent-searches-change"
 const MAX_SEARCHES = 8
 
@@ -12,7 +14,7 @@ let cachedSearches: string[] = []
 export function getRecentSearches(): string[] {
   let raw: string | null = null
   try {
-    raw = localStorage.getItem(STORAGE_KEY)
+    raw = localStorage.getItem(profileKey(STORAGE_KEY))
   } catch {
     // Storage blocked (private mode etc.) — behave as empty
   }
@@ -29,7 +31,7 @@ export function getRecentSearches(): string[] {
 
 function write(searches: string[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(searches.slice(0, MAX_SEARCHES)))
+    localStorage.setItem(profileKey(STORAGE_KEY), JSON.stringify(searches.slice(0, MAX_SEARCHES)))
   } catch {
     return
   }
@@ -51,7 +53,7 @@ export function removeRecentSearch(query: string) {
 export const clearRecentSearches = () => write([])
 
 export function subscribeRecentSearches(callback: () => void) {
-  const onStorage = (e: StorageEvent) => e.key === STORAGE_KEY && callback()
+  const onStorage = (e: StorageEvent) => e.key === profileKey(STORAGE_KEY) && callback()
   window.addEventListener(CHANGE_EVENT, callback)
   window.addEventListener("storage", onStorage) // other tabs
   return () => {

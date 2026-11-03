@@ -9,6 +9,8 @@ import Logo from "./Logo"
 import { useGenres } from "../hooks/useGenres"
 import { useInstallPrompt } from "../hooks/useInstallPrompt"
 import MediaTypeToggle from "./MediaTypeToggle"
+import ProfileAvatar from "./ProfileAvatar"
+import { useActiveProfile } from "../hooks/useProfiles"
 import { genrePath, type MediaType } from "../utils/genres"
 
 export default function NavBar() {
@@ -18,6 +20,7 @@ export default function NavBar() {
   const [genreType, setGenreType] = useState<MediaType>("movie")
   const { data: genres = [] } = useGenres(genreType)
   const { canInstall, install } = useInstallPrompt()
+  const profile = useActiveProfile()
 
   // Close the genres menu on route change
   useEffect(() => {
@@ -135,6 +138,17 @@ export default function NavBar() {
             Install
           </button>
         )}
+
+        {/* Profile (on phones the only thing on the right of the bar) */}
+        <Link
+          to="/profiles"
+          className="ml-auto md:ml-0 shrink-0 flex items-center gap-2 rounded-lg p-1 hover:bg-white/10 transition-colors"
+          aria-label={`${profile.name}'s profile · switch profile`}
+          title="Switch profile"
+        >
+          <ProfileAvatar profile={profile} size={30} />
+          {profile.kids && <span className="text-xs font-bold tracking-wide text-primary pr-1">KIDS</span>}
+        </Link>
       </div>
     </nav>
   )

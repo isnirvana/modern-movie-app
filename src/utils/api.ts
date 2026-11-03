@@ -1,5 +1,6 @@
 import axios from "axios"
 import { isReleased } from "./media"
+import { installKidsFilter } from "./kids"
 
 const TMDB_BASE = "https://api.themoviedb.org/3"
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY
@@ -8,6 +9,10 @@ const api = axios.create({
   baseURL: TMDB_BASE,
   params: { api_key: API_KEY },
 })
+
+// Kids profiles see kid-safe results only: here, and on axios's default instance (search, trending and seasons use it)
+installKidsFilter(api)
+installKidsFilter(axios)
 
 // Fetch trending movies
 // Fetch trending movies and TV shows

@@ -7,6 +7,9 @@ import PlayerModal from "../components/PlayerModal"
 import MobilePlayBar from "../components/MobilePlayBar"
 import VideoRow from "../components/VideoRow"
 import MyListButton from "../components/MyListButton"
+import KidsBlocked from "../components/KidsBlocked"
+import { isKidsMode } from "../utils/profiles"
+import { kidsAllowed, usAgeRating } from "../utils/kids"
 import DetailsSection, { CertBadge } from "../components/DetailsSection"
 import { movieCertification, movieDetails, formatRuntime, languageName, inTheatersOnly } from "../utils/details"
 import ReleasePill from "../components/ReleasePill"
@@ -63,6 +66,9 @@ export default function MovieDetail() {
       </div>
     )
   }
+
+  // Kids profiles: only titles rated for kids
+  if (isKidsMode() && !kidsAllowed("movie", m)) return <KidsBlocked rating={usAgeRating("movie", m)} />
 
   const year = m.release_date ? new Date(m.release_date).getFullYear() : null
   const rating = m.vote_average ?? 0

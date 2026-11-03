@@ -37,7 +37,7 @@ import MediaRow from "../components/MediaRow"
 import ContinueWatching from "../components/ContinueWatching"
 import Top10Row from "../components/Top10Row"
 import BecauseYouWatched from "../components/BecauseYouWatched"
-import { useWatchHistory } from "../hooks/useWatchHistory"
+import { usePersonalRows } from "../hooks/usePersonalRows"
 import { useMyList } from "../hooks/useMyList"
 import LoadingSkeleton from "../components/LoadingSkeleton"
 import { useTrending } from "../hooks/useTrending"
@@ -64,7 +64,7 @@ export default function Home() {
   const topMovies = useTmdbList("/trending/movie/day", "movie")
   const topShows = useTmdbList("/trending/tv/day", "tv")
   // "Because you watched": the two most recently watched titles
-  const [recent1, recent2] = useWatchHistory()
+  const { seeds: [seed1, seed2], exclude } = usePersonalRows()
 
   // Coming Soon: movies and shows taking turns, each most anticipated first
   // (sorting by date would bury the movies under shows premiering today)
@@ -91,12 +91,12 @@ export default function Home() {
         <ContinueWatching />
         <Top10Row title="Top 10 Movies Today" items={topMovies.data ?? []} isLoading={topMovies.isLoading} />
         <MediaRow title="My List" items={myList.map((i) => ({ ...i, media_type: i.type }))} to="/my-list" />
-        {recent1 && <BecauseYouWatched key={`${recent1.type}-${recent1.id}`} entry={recent1} />}
+        {seed1 && <BecauseYouWatched key={`${seed1.type}-${seed1.id}`} seed={seed1} exclude={exclude} />}
         <MediaRow title="Now Playing" items={nowPlaying.data ?? []} isLoading={nowPlaying.isLoading} />
         <MediaRow title="Popular Movies" items={popularMovies.data ?? []} isLoading={popularMovies.isLoading} to="/movies" />
         <Top10Row title="Top 10 Shows Today" items={topShows.data ?? []} isLoading={topShows.isLoading} />
         <MediaRow title="Popular TV Shows" items={popularTV.data ?? []} isLoading={popularTV.isLoading} to="/tv" />
-        {recent2 && <BecauseYouWatched key={`${recent2.type}-${recent2.id}`} entry={recent2} />}
+        {seed2 && <BecauseYouWatched key={`${seed2.type}-${seed2.id}`} seed={seed2} exclude={exclude} />}
         <MediaRow title="Top Rated" items={topRated.data ?? []} isLoading={topRated.isLoading} />
         <MediaRow title="Coming Soon" items={comingSoon} isLoading={upcomingMovies.isLoading && upcomingTV.isLoading} />
       </div>
