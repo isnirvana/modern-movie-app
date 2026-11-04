@@ -1,0 +1,12 @@
+// Cloudflare (Workers with static assets): serves the built site from dist/.
+// Cloudflare builds with `npm run build`, then deploys with `npx wrangler deploy`, which reads this file.
+// public/_headers (copied into dist/) sets the caching.
+{
+  "name": "modern-movie-app",
+  "compatibility_date": "2025-10-01",
+  "assets": {
+    "directory": "./dist",
+    // Any page address (/for-you, /movie/123…) gets the app, which shows the right page
+    "not_found_handling": "single-page-application"
+  }
+}
