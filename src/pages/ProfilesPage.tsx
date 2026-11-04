@@ -13,6 +13,7 @@ import AvatarPicker from "../components/AvatarPicker"
 import AccountPanel from "../components/AccountPanel"
 import { useProfiles } from "../hooks/useProfiles"
 import { useIsDesktop } from "../hooks/useMediaQuery"
+import { useVisualViewport, visibleAreaStyle } from "../hooks/useVisualViewport"
 import {
   MAIN_ID,
   MAX_PROFILES,
@@ -247,6 +248,8 @@ function ProfileTile({ profile: p, size, managing, current, state, onClick }: {
 }
 
 // --- Dialogs: a sheet from the bottom on phones, a card in the middle on bigger screens ---
+// They keep to the part of the screen above the on-screen keyboard (PIN, name, avatar search), scrolling
+// inside it when they're taller.
 
 function Dialog({ title, onClose, children, top }: { title: string; onClose: () => void; children: ReactNode; top?: ReactNode }) {
   useEffect(() => {
@@ -254,11 +257,12 @@ function Dialog({ title, onClose, children, top }: { title: string; onClose: () 
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
   }, [onClose])
+  const visible = useVisualViewport()
 
   return (
     <motion.div
       className="fixed inset-0 z-[80] bg-black/70 flex items-end sm:items-center justify-center sm:p-4"
-      style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+      style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", ...visibleAreaStyle(visible) }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -268,7 +272,7 @@ function Dialog({ title, onClose, children, top }: { title: string; onClose: () 
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl px-6 pt-3 sm:pt-7 shadow-card"
+        className="w-full sm:max-w-md max-h-full overflow-y-auto overscroll-contain rounded-t-3xl sm:rounded-3xl px-6 pt-3 sm:pt-7 shadow-card"
         style={{
           background: "linear-gradient(to bottom, #191924, #12121a)",
           border: "1px solid rgba(255,255,255,0.08)",
