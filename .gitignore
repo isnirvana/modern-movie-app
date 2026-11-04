@@ -25,3 +25,6 @@ dist-ssr
 
 # Supabase CLI working files
 supabase/.temp
+
+# Cloudflare wrangler local state
+.wrangler
