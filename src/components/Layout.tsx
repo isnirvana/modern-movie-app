@@ -4,6 +4,7 @@ import NavBar from "./NavBar"
 import Footer from "./Footer"
 import BottomNav from "./BottomNav"
 import OfflineBanner from "./OfflineBanner"
+import UpdateToast from "./UpdateToast"
 import LoadingSkeleton from "./LoadingSkeleton"
 import { SpotlightSkeleton } from "./PageSkeletons"
 import { motion } from "framer-motion"
@@ -62,6 +63,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         {!gate && <Footer />}
       </main>
       {!gate && <BottomNav />}
+      <UpdateToast />
     </div>
   )
 }
