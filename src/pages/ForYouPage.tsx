@@ -22,6 +22,7 @@ import { useGenres } from "../hooks/useGenres"
 import { useTitleExtras } from "../hooks/useTitleExtras"
 import { useActiveProfile } from "../hooks/useProfiles"
 import { useFavourites } from "../hooks/useFavourites"
+import { useVisualViewport, visibleAreaStyle } from "../hooks/useVisualViewport"
 import { because, byTaste, favouriteType, reason, topGenres, withoutExcluded, type Pick, type Seed, type Taste } from "../utils/recommend"
 import { genrePath, type Genre, type MediaType } from "../utils/genres"
 
@@ -469,6 +470,8 @@ function Welcome({ name }: { name: string }) {
 
 function PickerDialog({ startOn, onClose }: { startOn: Filter; onClose: () => void }) {
   const favourites = useFavourites()
+  // Above the on-screen keyboard while searching, so the Save bar stays reachable
+  const visible = useVisualViewport()
 
   // Lock page scroll and close on Escape while open
   useEffect(() => {
@@ -485,7 +488,7 @@ function PickerDialog({ startOn, onClose }: { startOn: Filter; onClose: () => vo
   return (
     <motion.div
       className="fixed inset-0 z-[80] bg-black/70 flex md:items-center md:justify-center md:p-6"
-      style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
+      style={{ backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", ...visibleAreaStyle(visible) }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

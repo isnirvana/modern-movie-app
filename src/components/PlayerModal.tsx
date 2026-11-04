@@ -305,10 +305,17 @@ export default function PlayerModal({ open, onClose, servers, title, subtitle, p
               <div className="flex-shrink-0 h-[2px] w-full" style={{ background: "linear-gradient(90deg, #6c63ff, #f72585, transparent)" }} />
             )}
 
-            {/* Player: the largest 16:9 frame that fits, centred on black (on an upright phone too, so the
-                player's own controls sit on the picture rather than at the far edges of the screen) */}
+            {/* Player: the largest 16:9 frame that fits, centred on black, so our player's controls sit on the
+                picture. On phones the other servers (iframes) get the whole area instead: they letterbox the video
+                themselves, and their controls are cramped into a phone-width 16:9 frame. */}
             <div className="relative w-full bg-black flex-1 min-h-0 flex items-center justify-center" style={{ containerType: "size" }}>
-              <div className="player-frame relative aspect-video w-[min(100cqw,calc(100cqh*16/9))]">
+              <div
+                className={
+                  !desktop && !server?.stream
+                    ? "player-frame absolute inset-0"
+                    : "player-frame relative aspect-video w-[min(100cqw,calc(100cqh*16/9))]"
+                }
+              >
                 {!loaded && <Loading title={title} subtitle={subtitle} server={server?.name} backdropPath={backdropPath} />}
                 {!server ? null : server.stream ? (
                   <Suspense fallback={null}>
