@@ -1,0 +1,14 @@
+# Response headers for the host (Cloudflare Pages; Netlify reads the same file)
+
+# Built files carry a hash of their contents in their name, so a name never changes meaning:
+# browsers can keep them for a year
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Always checked for a newer copy: app updates (and the "new version is ready" message) depend on these
+/sw.js
+  Cache-Control: no-cache
+/registerSW.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
